@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "strategy": "capability-gated",
+  "certified_at": "2026-08-13",
+  "required_exec_flags": [
+    "--cd",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "--ask-for-approval",
+    "--strict-config",
+    "--dangerously-bypass-hook-trust",
+    "--ephemeral",
+    "--json",
+    "--output-schema",
+    "--output-last-message",
+    "--config",
+    "--model"
+  ],
+  "required_runtime_files": [
+    "config.toml",
+    "hooks.json"
+  ],
+  "required_config_fragments": [
+    "hooks = true",
+    "[mcp_servers.amazon_ads]",
+    "default_tools_approval_mode = \"writes\""
+  ],
+  "notes": "Production is certified against Codex capabilities rather than a cosmetic version string. Preflight fails closed if required non-interactive, structured-output, sandbox, strict-config, hook-trust, or inline-config features disappear."
+}

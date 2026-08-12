@@ -1,0 +1,60 @@
+name: upstream-contract-drift
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-contract-drift
+  cancel-in-progress: true
+
+jobs:
+  amazon-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Compare certified Amazon Ads Postman tree with upstream main
+        shell: bash
+        run: |
+          set -euo pipefail
+          certified="$(python3 - <<'PY'
+          import json
+          print(json.load(open('vendor/amazon-postman/CERTIFIED_UPSTREAM.json'))['commit'])
+          PY
+          )"
+          latest="$(git ls-remote https://github.com/amzn/ads-advanced-tools-docs.git refs/heads/main | awk '{print $1}')"
+          if [[ -z "$latest" ]]; then
+            echo "Unable to resolve Amazon upstream main" >&2
+            exit 2
+          fi
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git -C "$tmp" init -q
+          git -C "$tmp" remote add origin https://github.com/amzn/ads-advanced-tools-docs.git
+          git -C "$tmp" fetch -q --depth 1 origin "$certified"
+          git -C "$tmp" fetch -q --depth 1 origin "$latest"
+
+          certified_tree="$(git -C "$tmp" rev-parse "${certified}:postman")"
+          latest_tree="$(git -C "$tmp" rev-parse "${latest}:postman")"
+          echo "certified_commit=$certified"
+          echo "upstream_commit=$latest"
+          echo "certified_postman_tree=$certified_tree"
+          echo "upstream_postman_tree=$latest_tree"
+
+          if [[ "$latest_tree" != "$certified_tree" ]]; then
+            echo "Amazon Ads Postman contract drift detected. Review the upstream postman/ changes before changing the certified pin." >&2
+            exit 3
+          fi
+          if [[ "$latest" != "$certified" ]]; then
+            echo "Upstream repository moved, but the postman/ contract tree is unchanged. No contract drift."
+          else
+            echo "Certified Amazon Ads Postman contract matches upstream main."
+          fi
