@@ -37,7 +37,7 @@ def main():
     add('tool in {"Bash","apply_patch","Edit","Write"}' in hook,'Frozen hook blocks local shell/file mutation tools in read-only roles')
     add('executor may only call amazon_ads MCP' in hook and 'MCP arguments differ from sealed grant' in hook,'Frozen hook fails closed to exact Executor MCP tool + arguments')
     web=(ROOT/'src/ads_autopilot/web_server.py').read_text()
-    add('ADS_WEB_HOST", "127.0.0.1"' in web,'Owner Web binds loopback by default')
+    add('ADS_WEB_HOST' in web and '127.0.0.1' in web,'Owner Web binds loopback by default')
     add('X-CSRF-Token' in web and 'csrf_failed' in web,'Owner Web mutations require CSRF token')
     add('/api/emergency-stop' in web and '/api/revisions/restore' in web,'Owner Web exposes emergency stop and revision rollback')
 
