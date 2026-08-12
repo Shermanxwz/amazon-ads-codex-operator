@@ -1,0 +1,36 @@
+name: upstream-contract-drift
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  amazon-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare certified Amazon Ads contract with upstream main
+        shell: bash
+        run: |
+          set -euo pipefail
+          certified="$(python3 - <<'PY'
+          import json
+          print(json.load(open('vendor/amazon-postman/CERTIFIED_UPSTREAM.json'))['commit'])
+          PY
+          )"
+          latest="$(git ls-remote https://github.com/amzn/ads-advanced-tools-docs.git refs/heads/main | awk '{print $1}')"
+          echo "certified=$certified"
+          echo "upstream=$latest"
+          if [[ -z "$latest" ]]; then
+            echo "Unable to resolve Amazon upstream main" >&2
+            exit 2
+          fi
+          if [[ "$latest" != "$certified" ]]; then
+            echo "Amazon Ads contract drift detected. Review upstream before changing the certified pin." >&2
+            exit 3
+          fi
