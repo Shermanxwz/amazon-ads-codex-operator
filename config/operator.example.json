@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "mode": "full_managed",
+  "advertiser_account_id": "REPLACE_ME",
+  "profile_ids": [
+    "REPLACE_ME"
+  ],
+  "marketplaces": [
+    "US"
+  ],
+  "timezone": "America/Los_Angeles",
+  "currency": "USD",
+  "objectives": {
+    "primary": "contribution_profit",
+    "target_acos_pct": 25.0,
+    "target_roas": 4.0,
+    "break_even_acos_pct": 35.0,
+    "minimum_orders_for_scaling": 3,
+    "economics_available": false
+  },
+  "scope": {
+    "ad_products": [
+      "SPONSORED_PRODUCTS"
+    ],
+    "managed_asins": [],
+    "exclude_campaign_name_regex": []
+  },
+  "scheduling": {
+    "hourly_pacing": true,
+    "daily_optimization": true,
+    "weekly_strategy": true,
+    "daily_hour_local": 4,
+    "weekly_day": "Sun",
+    "weekly_hour_local": 5
+  }
+}

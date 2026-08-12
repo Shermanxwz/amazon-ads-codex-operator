@@ -1,0 +1,8 @@
+[Unit]
+Description=Weekly Amazon Ads strategy loop
+[Timer]
+OnCalendar=Sun *-*-* 05:10:00
+RandomizedDelaySec=15m
+Persistent=true
+[Install]
+WantedBy=timers.target

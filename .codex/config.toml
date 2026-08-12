@@ -1,0 +1,13 @@
+# Project-scoped Codex configuration for Amazon Ads autonomous operation.
+# OAuth credentials are stored by Codex locally and must never be committed.
+
+[mcp_servers.amazon_ads]
+url = "https://advertising-ai.amazon.com/mcp"
+auth = "oauth"
+enabled = true
+required = true
+startup_timeout_sec = 30
+tool_timeout_sec = 180
+# Full-managed mode is intentionally non-interactive. The Python control plane
+# is the hard authorization boundary, not Codex's interactive approval prompt.
+default_tools_approval_mode = "auto"

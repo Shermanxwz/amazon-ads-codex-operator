@@ -1,0 +1,8 @@
+[Unit]
+Description=Hourly Amazon Ads pacing loop
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+[Install]
+WantedBy=timers.target

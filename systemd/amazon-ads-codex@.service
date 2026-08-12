@@ -1,0 +1,15 @@
+[Unit]
+Description=Amazon Ads Codex autonomous cycle (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 @ROOT@/scripts/run_cycle.py %i
+Nice=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=@ROOT@

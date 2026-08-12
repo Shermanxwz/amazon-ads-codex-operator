@@ -1,0 +1,75 @@
+{
+  "version": 2,
+  "policy_name": "full-managed-default",
+  "autonomy": {
+    "mode": "full_managed",
+    "human_approval_required": false,
+    "notify_only_on_exception": true,
+    "allow_campaign_creation": true,
+    "allow_ad_group_creation": true,
+    "allow_ad_creation": true,
+    "allow_keyword_creation": true,
+    "allow_target_creation": true,
+    "allow_negative_targeting": true,
+    "allow_state_changes": true,
+    "allow_budget_decreases": true,
+    "allow_budget_increases": true,
+    "allow_bid_changes": true,
+    "allow_placement_changes": true,
+    "allow_irreversible_cleanup": false
+  },
+  "permanent_blocks": [
+    "billing",
+    "payment",
+    "account_admin",
+    "credentials",
+    "user_management",
+    "permanent_delete"
+  ],
+  "scope": {
+    "allowed_ad_products": [
+      "SPONSORED_PRODUCTS"
+    ],
+    "max_actions_per_cycle": 100,
+    "max_campaign_creates_per_day": 10,
+    "require_observed_asin_for_product_ad_create": true,
+    "require_paused_campaign_create": true,
+    "require_independent_verification": true,
+    "require_prewrite_read": true,
+    "prewrite_read_max_age_seconds": 300,
+    "cooldown_hours": 12,
+    "autonomous_campaign_name_prefix": "CODEX-",
+    "require_verified_activation": true
+  },
+  "money": {
+    "owner_daily_spend_ceiling": null,
+    "max_new_campaign_budget_per_day": 1000.0,
+    "max_single_campaign_budget": 500.0,
+    "max_budget_increase_pct_per_action": 50.0,
+    "max_profile_budget_increase_pct_per_cycle": 35.0,
+    "reservation_hold_seconds": 1800,
+    "platform_buffer_pct": 10.0,
+    "max_budget_decrease_pct_per_action": 50.0,
+    "spend_evidence_max_age_seconds": 1800
+  },
+  "bidding": {
+    "max_bid_increase_pct_per_action": 35.0,
+    "max_bid_decrease_pct_per_action": 35.0,
+    "hourly_max_bid_change_pct": 10.0,
+    "min_bid": 0.02,
+    "max_bid": 25.0,
+    "min_confidence_scale": 0.72,
+    "min_confidence_reduce": 0.62
+  },
+  "placement": {
+    "max_change_points_per_action": 30.0,
+    "min_multiplier_pct": 0.0,
+    "max_multiplier_pct": 900.0
+  },
+  "recovery": {
+    "max_consecutive_failures": 3,
+    "verification_grace_seconds": 120,
+    "pause_on_unknown_write_outcome": true,
+    "kill_switch": false
+  }
+}
