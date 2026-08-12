@@ -3,48 +3,13 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "cycle_id": {
-      "type": "string"
-    },
-    "results": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "action_hash": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "verified",
-              "mismatch",
-              "not_found",
-              "unknown"
-            ]
-          },
-          "observed": {
-            "type": "object"
-          },
-          "differences": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "action_hash",
-          "status",
-          "observed",
-          "differences"
-        ]
-      }
-    }
+    "cycle_id": {"type": "string"},
+    "results": {"type": "array","items": {"type": "object","additionalProperties": false,"properties": {
+      "action_hash": {"type": "string"},
+      "status": {"type": "string","enum": ["verified","mismatch","not_found","unknown"]},
+      "observed": {"type": "object"},
+      "differences": {"type": "array","items": {"type": "string"}}
+    },"required": ["action_hash","status","observed","differences"]}}
   },
-  "required": [
-    "cycle_id",
-    "results"
-  ]
+  "required": ["cycle_id","results"]
 }

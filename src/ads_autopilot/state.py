@@ -1,7 +1,7 @@
 from __future__ import annotations
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-import json, sqlite3
+import json, os, sqlite3
 from pathlib import Path
 from typing import Any, Iterator
 from zoneinfo import ZoneInfo
@@ -19,7 +19,9 @@ def _day_bounds(timezone_name:str)->tuple[str,str]:
 
 class Store:
     def __init__(self, path: str|Path):
-        self.path=Path(path); self.path.parent.mkdir(parents=True, exist_ok=True); self._init()
+        self.path=Path(path); self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700); self._init()
+        try: self.path.chmod(0o600)
+        except OSError: pass
     @contextmanager
     def connection(self)->Iterator[sqlite3.Connection]:
         conn=sqlite3.connect(self.path, timeout=30); conn.row_factory=sqlite3.Row
@@ -112,6 +114,47 @@ class Store:
             if family==action_family and row['status'] not in {'rejected','cancelled','dry_run'}:
                 out=dict(row); out['payload']=payload; return out
         return None
+    def list_cycles(self,limit:int=50)->list[dict[str,Any]]:
+        with self.connection() as c:
+            rows=c.execute("SELECT * FROM cycles ORDER BY started_at DESC LIMIT ?",(max(1,min(1000,int(limit))),)).fetchall()
+        out=[]
+        for r in rows:
+            d=dict(r)
+            try: d['summary']=json.loads(d.pop('summary_json') or '{}')
+            except Exception: d['summary']={}
+            out.append(d)
+        return out
+    def list_actions(self,limit:int=200)->list[dict[str,Any]]:
+        with self.connection() as c:
+            rows=c.execute("SELECT a.*,v.status verification_status,v.created_at verification_at FROM actions a LEFT JOIN verifications v ON v.id=(SELECT id FROM verifications vv WHERE vv.action_hash=a.action_hash ORDER BY vv.id DESC LIMIT 1) ORDER BY a.created_at DESC LIMIT ?",(max(1,min(2000,int(limit))),)).fetchall()
+        out=[]
+        for r in rows:
+            d=dict(r)
+            try: d['payload']=json.loads(d.pop('payload_json') or '{}')
+            except Exception: d['payload']={}
+            out.append(d)
+        return out
+    def list_events(self,limit:int=200)->list[dict[str,Any]]:
+        with self.connection() as c:
+            rows=c.execute("SELECT * FROM events ORDER BY id DESC LIMIT ?",(max(1,min(2000,int(limit))),)).fetchall()
+        out=[]
+        for r in rows:
+            d=dict(r)
+            try: d['data']=json.loads(d.pop('data_json') or '{}')
+            except Exception: d['data']={}
+            out.append(d)
+        return out
+    def reservation_summary(self,day_key:str|None=None)->dict[str,Any]:
+        day_key=day_key or datetime.now(UTC).date().isoformat()
+        with self.connection() as c:
+            rows=c.execute("SELECT status,COUNT(*) count,COALESCE(SUM(amount),0) amount FROM reservations WHERE day_key=? GROUP BY status",(day_key,)).fetchall()
+        return {'day_key':day_key,'by_status':{str(r['status']):{'count':int(r['count']),'amount':float(r['amount'] or 0)} for r in rows}}
+    def integrity_check(self)->dict[str,Any]:
+        with self.connection() as c:
+            result=str(c.execute("PRAGMA integrity_check").fetchone()[0]); fk=[tuple(r) for r in c.execute("PRAGMA foreign_key_check").fetchall()]
+        return {'ok':result.lower()=='ok' and not fk,'integrity':result,'foreign_key_errors':len(fk)}
+    def dashboard(self)->dict[str,Any]:
+        return {'integrity':self.integrity_check(),'cycles':self.list_cycles(12),'actions':self.list_actions(40),'events':self.list_events(40),'reservations':self.reservation_summary(),'state_summary':self.recent_state_summary(5,20)}
     def recent_state_summary(self,cycle_limit:int=10,action_limit:int=50)->dict[str,Any]:
         with self.connection() as c:
             cycles=[dict(r) for r in c.execute("SELECT kind,status,started_at,finished_at,summary_json FROM cycles ORDER BY started_at DESC LIMIT ?",(cycle_limit,)).fetchall()]

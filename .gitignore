@@ -4,12 +4,12 @@
 config/operator.local.json
 config/autonomy-policy.local.json
 .secrets/
-state/*.db
-state/*.db-*
-state/runs/*
-!state/runs/.gitkeep
-logs/*
-!logs/.gitkeep
+owner.db
+runtime.db
+*.db
+*.db-*
+state/
+logs/
 .codex/auth.json
 .codex-log/
 __pycache__/
@@ -21,3 +21,4 @@ build/
 *.egg-info/
 vendor/amazon-postman/postman/
 vendor/amazon-postman/index/
+vendor/amazon-postman/UPSTREAM.json

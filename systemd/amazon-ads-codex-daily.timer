@@ -1,8 +1,9 @@
 [Unit]
 Description=Daily Amazon Ads optimization loop
 [Timer]
-OnCalendar=*-*-* 04:10:00
+OnCalendar=*-*-* @DAILY_HOUR@:10:00 @TIMEZONE@
 RandomizedDelaySec=10m
 Persistent=true
+Unit=amazon-ads-codex@daily.service
 [Install]
 WantedBy=timers.target

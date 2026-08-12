@@ -1,8 +1,9 @@
 [Unit]
 Description=Weekly Amazon Ads strategy loop
 [Timer]
-OnCalendar=Sun *-*-* 05:10:00
+OnCalendar=@WEEKLY_DAY@ *-*-* @WEEKLY_HOUR@:10:00 @TIMEZONE@
 RandomizedDelaySec=15m
 Persistent=true
+Unit=amazon-ads-codex@weekly.service
 [Install]
 WantedBy=timers.target

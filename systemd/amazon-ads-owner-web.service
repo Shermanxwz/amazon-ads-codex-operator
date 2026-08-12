@@ -1,15 +1,17 @@
 [Unit]
-Description=Amazon Ads Codex autonomous cycle (%i)
-After=network-online.target
-Wants=network-online.target
+Description=Amazon Ads Codex Owner Web Control Plane
+After=network.target
 
 [Service]
-Type=oneshot
+Type=simple
 WorkingDirectory=@ROOT@
 Environment=PYTHONUNBUFFERED=1
 Environment=ADS_OWNER_HOME=@OWNER_HOME@
-ExecStart=/usr/bin/python3 @ROOT@/scripts/run_cycle.py %i
-Nice=5
+Environment=ADS_WEB_HOST=127.0.0.1
+Environment=ADS_WEB_PORT=8765
+ExecStart=/usr/bin/python3 @ROOT@/scripts/run_web.py
+Restart=on-failure
+RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 PrivateDevices=true
@@ -24,3 +26,6 @@ ProtectClock=true
 RestrictSUIDSGID=true
 LockPersonality=true
 UMask=0077
+
+[Install]
+WantedBy=default.target

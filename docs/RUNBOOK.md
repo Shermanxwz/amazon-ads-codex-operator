@@ -1,18 +1,39 @@
-# Runbook
+# Operations runbook
 
-## Before live mode
-1. Set account/profile IDs in `operator.local.json`.
-2. Set the correct account timezone and currency.
-3. Set `owner_daily_spend_ceiling` in the local policy.
-4. OAuth-login to `amazon_ads` MCP.
-5. Run `scripts/preflight.py`.
-6. Run at least one `daily --dry-run` and inspect `state/runs/<cycle>/plan.json` and `sealed-actions.json`.
+## Normal startup
+1. `python3 scripts/bootstrap.py`
+2. `./scripts/configure_amazon_mcp.sh`
+3. `python3 scripts/run_web.py`
+4. Configure Owner account/profile/timezone/ceiling while mode remains Observe.
+5. `python3 scripts/preflight.py`
+6. `python3 scripts/archive_check.py`
+7. Run daily dry-run and inspect Owner run artifacts.
+8. Complete staged live acceptance before choosing Autopilot.
 
 ## Emergency stop
-Set `recovery.kill_switch` to `true` in `config/autonomy-policy.local.json`. The policy engine will reject every action.
+Preferred: Owner Web → **紧急停止全部写操作**.
 
-## Exception handling
-A cycle exits non-zero when policy blocks, execution is ambiguous, or verification fails. systemd records the failure. Investigate the corresponding run directory before clearing the exception.
+Fallback:
+```bash
+python3 scripts/ownerctl.py emergency-stop
+```
 
-## Repository visibility
-The GitHub repo should be Private before any real account-specific configuration is ever pushed.
+Do not clear Emergency Stop merely to make a failed timer green. Investigate the last run and any uncertain reservations first. `emergency-clear` deliberately returns mode to Observe.
+
+## Unknown/partial write
+1. Keep system Paused.
+2. Inspect `execution-summary.json` in the corresponding Owner run directory.
+3. Confirm the affected entity directly from Amazon.
+4. Do not manually release/alter SQLite reservation rows.
+5. Resolve platform state and only then return to Observe for another validation cycle.
+
+## Owner policy rollback
+Use the Web revision section or the revision restore API. Restore creates a *new* revision and audit entry, preserving history, and forces mode to Observe.
+
+## Git/code upgrade
+1. Emergency stop or Pause.
+2. Pull/review the new code.
+3. Run tests and `archive_check.py`.
+4. Run `bootstrap.py` again to deploy the newly vetted frozen PreToolUse hook into Owner Home.
+5. Run `preflight.py` and Observe dry-run.
+6. Only then re-enable Autopilot.

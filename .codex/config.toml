@@ -1,6 +1,7 @@
-# Project-scoped Codex configuration for Amazon Ads autonomous operation.
-# OAuth credentials are stored by Codex locally and must never be committed.
-
+# Development/project-scoped MCP configuration. Production automation uses the
+# dedicated CODEX_HOME under ADS_OWNER_HOME so Codex cannot rewrite its own
+# standing authority. Writes remain gated by default; the deterministic sealed
+# Executor overrides this to `approve` for one atomic action at a time.
 [mcp_servers.amazon_ads]
 url = "https://advertising-ai.amazon.com/mcp"
 auth = "oauth"
@@ -8,7 +9,4 @@ enabled = true
 required = true
 startup_timeout_sec = 30
 tool_timeout_sec = 180
-# Full-managed mode is intentionally non-interactive. MCP tool calls are
-# explicitly approved here; the deterministic Python controller authorizes
-# only exact HMAC-sealed actions before the Executor receives them.
-default_tools_approval_mode = "approve"
+default_tools_approval_mode = "writes"

@@ -33,8 +33,7 @@ def _raw(value:Any)->Outcome:
     if s in FAIL: return Outcome('failure',f'raw result status {s}')
     if s in PENDING: return Outcome('pending',f'raw result status {s}')
     if s in SUCCESS and not payload.get('error') and not payload.get('errors'): return Outcome('success',f'raw result status {s}')
-    success=payload.get('success'); error=payload.get('error'); errors=payload.get('errors')
-    successes=payload.get('successes')
+    success=payload.get('success'); error=payload.get('error'); errors=payload.get('errors'); successes=payload.get('successes')
     if isinstance(success,list): successes=success
     if isinstance(error,list): errors=error
     ec=len(errors) if isinstance(errors,(list,dict)) else (1 if error else 0)
@@ -42,7 +41,6 @@ def _raw(value:Any)->Outcome:
     if ec and sc: return Outcome('partial',f'raw bulk result has {sc} success and {ec} error')
     if ec or success is False: return Outcome('failure','raw result contains explicit failure')
     if sc or success is True: return Outcome('success','raw result contains explicit success')
-    # IDs can prove a resource exists/was returned, but not that a mutation was accepted/applied.
     return Outcome('unknown','raw result has no explicit write success/failure signal')
 
 def parse_outcome(receipt_item:Any)->Outcome:

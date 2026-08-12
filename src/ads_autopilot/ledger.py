@@ -5,9 +5,6 @@ from .state import Store, now_iso
 
 UTC=timezone.utc
 class BudgetError(ValueError): pass
-
-# Ambiguous/unknown writes remain charged against the owner envelope until they
-# are independently reconciled. This is intentionally conservative.
 COUNTABLE={'reserved','pending','unknown','uncertain','executed','verified','verification_failed'}
 
 class BudgetLedger:

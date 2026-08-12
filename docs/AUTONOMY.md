@@ -20,4 +20,4 @@ The hard boundary is Python + SQLite, not prompt wording. Current machine-enforc
 - autonomous campaign namespace + PAUSED creation + independent verification lineage before activation;
 - independent post-write verification.
 
-To raise or lower autonomy, edit `config/autonomy-policy.local.json`, not the prompts. `owner_daily_spend_ceiling` is the principal monetary authority boundary and should be set to the maximum same-day ad spend you are willing to place under autonomous control.
+To raise or lower autonomy in production, use the authenticated Owner Web (or the trusted local `ownerctl` only for supported emergency/mode controls). The mutable standing policy is stored in the Owner DB outside the Git checkout; prompts and model workspaces cannot edit it. `owner_daily_spend_ceiling` is the principal monetary authority boundary and should be set to the maximum same-day ad spend you are willing to place under autonomous control.

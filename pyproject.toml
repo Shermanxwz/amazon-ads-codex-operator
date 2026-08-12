@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amazon-ads-codex-operator"
-version = "0.2.0"
-description = "Codex-native autonomous Amazon Ads control plane"
+version = "0.3.0"
+description = "Owner-controlled Codex autonomous Amazon Ads control plane"
 requires-python = ">=3.11"
 dependencies = []
 
@@ -14,6 +14,9 @@ dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+ads_autopilot = ["static/*.html", "static/*.js", "static/*.css"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

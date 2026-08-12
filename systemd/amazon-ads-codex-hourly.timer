@@ -4,5 +4,6 @@ Description=Hourly Amazon Ads pacing loop
 OnCalendar=hourly
 RandomizedDelaySec=5m
 Persistent=true
+Unit=amazon-ads-codex@hourly.service
 [Install]
 WantedBy=timers.target
