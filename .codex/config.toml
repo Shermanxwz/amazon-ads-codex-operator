@@ -8,6 +8,7 @@ enabled = true
 required = true
 startup_timeout_sec = 30
 tool_timeout_sec = 180
-# Full-managed mode is intentionally non-interactive. The Python control plane
-# is the hard authorization boundary, not Codex's interactive approval prompt.
-default_tools_approval_mode = "auto"
+# Full-managed mode is intentionally non-interactive. MCP tool calls are
+# explicitly approved here; the deterministic Python controller authorizes
+# only exact HMAC-sealed actions before the Executor receives them.
+default_tools_approval_mode = "approve"
