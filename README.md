@@ -1,122 +1,124 @@
 # Amazon Ads Codex Operator
 
-A Codex-native **Owner-controlled autonomous Amazon Ads control plane** for Ubuntu. It is designed for long-running, unattended Sponsored Products operations with a hard separation between **AI reasoning authority** and **Owner monetary/operational authority**.
+A Codex-native **Owner-controlled autonomous Amazon Ads control plane** for Ubuntu, built for long-running unattended Sponsored Products optimization with a hard separation between **AI reasoning freedom** and **Owner authority**.
 
-> Release line: **v0.4.x — archive-hardening / crash-safe sealed execution**. The design intentionally preserves broad AI freedom inside the Owner-defined envelope. v0.4 hardens replay, stale-state, crash/restart, runtime compatibility, contract reproducibility and disaster recovery; it does **not** turn the system into recommendation-only or per-action human approval.
+> Release line: **v0.5.x — Codex Evergreen / archive-sealed native operator.** AI autonomy is not reduced. The new layer prevents future Codex updates from silently replacing the production runtime.
 
-A source release may be archive-ready while a particular Amazon account is still live-acceptance pending. No deployment should be called production-accepted until that real account has completed `docs/ARCHIVE_ACCEPTANCE.md`.
-
-## The core rule
+## Core rule
 
 **Codex may decide what to optimize. Codex may not decide how much authority Codex has.**
 
-The Owner Web/Owner DB defines standing limits. Inside those limits, Codex may choose bids, budgets, placements, keywords/targets/negatives, state changes and allowed structural actions without routine human approval. The model cannot expand its own scope, monetary ceiling or permanent safety boundary.
+Inside Owner-defined scope, monetary ceilings and reversible action families, Codex may choose bids, budgets, placements, keywords/targets/negatives, state changes and allowed structural actions without routine human approval. Billing, payment, credentials, account/user administration and permanent deletion remain outside autonomous authority.
+
+## Sealed execution
 
 ```text
 Owner Web / ownerctl
         │
         ▼
- Owner DB + signed audit chain         Git checkout (read-only in production)
-        │                                      │
-        ├── policy/operator revisions           ├── prompts / schemas / code
-        ├── mode / emergency stop               └── no runtime secrets
-        └── monetary envelope
-                    │
-                    ▼
+ Owner DB + signed audit chain
+        │
+        ▼
 Planner Codex ──read only──► Amazon Ads MCP
         │
         ▼
-structured plan (exact tool_name + exact arguments)
+Deterministic Policy + spend reservation
         │
         ▼
-Deterministic Python Policy Engine
+fresh pre-write state guard
         │
-        ├── spend reservation ledger
-        ├── cooldown / creation / budget caps
-        ├── permanent operation blocks
-        └── HMAC sealed action
-                    │
-                    ▼
-          fresh pre-write state check
-                    │
-                    ▼
-        signed one-use action grant
-                    │
-                    ▼
+        ▼
+HMAC sealed action + one-use grant
+        │
+        ▼
 Atomic Executor Codex
-  ├── only one MCP tool enabled
+  ├── exact one MCP write tool
   ├── read-only shell sandbox
-  └── PreToolUse re-checks Owner authority,
-      validates exact signed arguments and
-      atomically consumes the grant once
-                    │
-                    ▼
-              Amazon mutation
-                    │
-                    ▼
-Verifier Codex ──read only──► fresh Amazon state
+  └── final PreToolUse Owner re-check + atomic grant consume
         │
-        ├── verified → durable completion
-        └── ambiguous/crash → fresh reconciliation, never blind replay
+        ▼
+Amazon mutation
+        │
+        ▼
+Independent Verifier Codex ──► fresh Amazon state
+        │
+        ├── verified → complete
+        └── ambiguous/crash → reconcile, never blind replay
 ```
 
-## What the Owner Web controls
+## Codex Evergreen
 
-The Web UI is the highest operational authority layer. It controls:
+Production no longer runs whichever `codex` happens to be on PATH. It uses an Owner-private ACTIVE runtime:
 
-- `Autopilot / Observe / Paused`
-- emergency stop
-- daily total ad-spend ceiling
-- per-campaign budget ceiling
-- daily new-campaign budget pool and creation count
-- bid/budget/profile expansion caps and cooldown
-- campaign/ad group/ad/keyword/target/negative/state/budget/bid/placement autonomy switches
-- advertiser/profile scope, managed ASINs, timezone and objectives
-- signed Owner audit chain and runtime integrity
-- immutable Policy/Operator revisions with rollback; rollback returns to Observe
-- Owner password rotation
+```text
+ADS_OWNER_HOME/codex-runtimes/
+├── registry.json
+└── slots/<sha256>/codex
+```
 
-The Web service binds to `127.0.0.1:8765` by default. Prefer an SSH tunnel for remote access. If you put it behind a reverse proxy, use TLS and set `ADS_WEB_PUBLIC_ORIGIN` to the exact HTTPS origin.
+A new Codex install/update is only a **candidate**. It is fingerprinted, copied to a content-addressed slot, probed against `config/codex-compatibility.json`, and cannot become ACTIVE until explicit promotion. The previous ACTIVE is retained for rollback. Every production Codex invocation verifies the ACTIVE fingerprint and writes `*.runtime.json` evidence beside its normal JSONL events.
 
-## Hard boundaries without micromanaging the AI
+This means a Linux package/self-update can change PATH without changing the production Amazon Ads runtime. If a future Codex release removes or changes a required stable capability, the candidate is rejected while the existing ACTIVE runtime continues to be selected.
 
-The controller permanently blocks billing, payment, credential management, account/user administration and permanent deletion. The production-certified autonomous ad-product scope remains **Sponsored Products** until other product contracts receive equivalent live acceptance.
+Commands:
 
-Within the Owner envelope, the AI remains autonomous. Engineering guards only prevent unsafe execution mechanics: stale writes, duplicate grant use, blind replay after crashes, authority changes after planning and unverified outcomes.
+```bash
+python3 scripts/codex_runtime.py status
+python3 scripts/check_codex_runtime.py
+./scripts/install_codex_ubuntu.sh                    # installs/registers candidate only
+python3 scripts/codex_runtime.py candidate --binary "$(command -v codex)"
+python3 scripts/codex_runtime.py promote <runtime_id>
+python3 scripts/codex_runtime.py rollback
+```
 
-Spend-increasing actions require fresh same-day spend evidence and reserve headroom before execution. Existing-entity mutations receive a fresh state check immediately before release. New autonomous campaigns must be created PAUSED, verified, and only enabled in a later authorized cycle.
+Bootstrap promotes the installed Codex only when no ACTIVE runtime exists. It never follows later PATH changes automatically. See `docs/CODEX_EVERGREEN.md`.
 
-## Replay and crash safety
+## Native Codex plugin
 
-Every Executor grant is named by the sealed action hash and can cross the `PreToolUse` boundary only once. The hook atomically creates a consumed marker before returning `allow`. At that same final boundary it re-reads Owner mode, Emergency Stop and policy/operator revisions.
+The repository includes a repo marketplace and `plugins/amazon-ads-operator`, packaging four Codex skills:
 
-If the Executor or host fails:
+- operator status and health;
+- diagnosis and forensic evidence;
+- archive/live acceptance;
+- autonomous in-envelope operation.
 
-- an unconsumed grant proves the write was never authorized and can be cancelled safely;
-- a consumed/ambiguous grant is **never replayed blindly**;
-- the controller independently reads Amazon and accepts the action only if live state proves the sealed `after` state;
-- otherwise the reservation remains uncertain and the system pauses for investigation.
+The plugin improves the Codex UX but is **not** a second security boundary or raw write path. Privileged Amazon mutations still flow only through the sealed Controller/Executor chain.
+
+Repo marketplace:
+
+```text
+.agents/plugins/marketplace.json
+plugins/amazon-ads-operator/.codex-plugin/plugin.json
+plugins/amazon-ads-operator/skills/...
+```
+
+## Owner control
+
+The authenticated Owner Web controls `Autopilot / Observe / Paused`, Emergency Stop, advertiser/profile/ASIN scope, daily total spend ceiling, campaign/new-campaign budgets, bid/budget/placement expansion, cooldowns, creation counts and autonomy families. Policy/operator revisions are immutable and audited; rollback returns to Observe.
+
+Web binds to `127.0.0.1:8765` by default. Prefer SSH tunneling or an explicitly secured TLS reverse proxy.
 
 ## Filesystem isolation
 
-Production runtime data is outside the Git checkout:
+Runtime state and secrets are outside Git:
 
 ```text
 ~/.local/share/amazon-ads-codex-owner/
-├── owner.db                 # Owner authority + revision/audit chain
-├── runtime.db               # cycle/action/reservation/verification state
+├── owner.db
+├── runtime.db
 ├── secrets/operator_signing_key
-├── codex-home/              # dedicated OAuth/MCP config
-├── trusted-hooks/           # frozen vetted PreToolUse hook
-├── grants/                  # issued/consumed one-use grant evidence
-├── runs/                    # forensic cycle artifacts + Codex JSONL events
-├── backups/                 # optional verified runtime backups
-└── codex-workspaces/        # disposable model workspaces
+├── codex-home/
+├── codex-runtimes/
+├── trusted-hooks/
+├── grants/
+├── runs/
+├── backups/
+└── codex-workspaces/
 ```
 
-`systemd` mounts the Git checkout read-only and grants writes only to the Owner runtime tree. Each Codex invocation gets a disposable workspace and a shell sandbox of `read-only`.
+Production systemd units treat the checkout as code, not writable state. Disposable Codex workspaces use a read-only shell sandbox.
 
-## Ubuntu installation
+## Install / bind Amazon MCP
 
 ```bash
 cd amazon-ads-codex-operator
@@ -124,12 +126,9 @@ cd amazon-ads-codex-operator
 python3 scripts/bootstrap.py
 ./scripts/configure_amazon_mcp.sh
 python3 scripts/run_web.py
-# Open http://127.0.0.1:8765
 ```
 
-The system starts in **Observe**. In Web, configure the real advertiser/profile, correct timezone/currency and a deliberate `owner_daily_spend_ceiling`.
-
-Then run:
+The system starts in Observe. Configure the real advertiser/profile, timezone/currency and a deliberate Owner spend ceiling, then run:
 
 ```bash
 python3 scripts/preflight.py
@@ -137,61 +136,29 @@ python3 scripts/archive_check.py
 python3 scripts/run_cycle.py daily --dry-run
 ```
 
-`preflight.py` also checks the installed Codex CLI against `config/codex-compatibility.json`. This is capability-gated rather than trusting a cosmetic version string.
+Only after staged live acceptance should the host be switched to Autopilot and timers installed with `./scripts/install_systemd.sh`.
 
-Inspect Owner run artifacts. Each Codex invocation preserves its machine-readable `*.events.jsonl` stream (and stderr when present) for forensic reconstruction. Logs are evidence, not authorization. Only after staged acceptance should you switch Web mode to **Autopilot**.
+## Update / rollback behavior
 
-## Emergency controls
+A normal Codex update must never be treated as a production promotion. Register and probe the candidate first. After promotion, run preflight plus Observe/dry-run and live read checks. If a host-specific regression appears, `python3 scripts/codex_runtime.py rollback` restores the previous certified runtime without changing Owner policy.
 
-Web: **紧急停止全部写操作**.
+GitHub also runs `.github/workflows/codex-evergreen.yml` daily against the current official Codex to surface capability drift before it reaches a host.
 
-Fallback:
+## Repository and release seal
 
-```bash
-python3 scripts/ownerctl.py emergency-stop
-python3 scripts/ownerctl.py status
-python3 scripts/ownerctl.py verify-audit
-```
+This repository intentionally keeps **one branch: `main`**. `single-main-branch` removes non-main branches after main pushes.
 
-The final PreToolUse authorization boundary re-checks Emergency Stop immediately before allowing a mutation. A request already submitted to Amazon cannot be recalled; one-action release plus independent verification bounds that residual risk.
+Every main push runs the Python 3.11/3.12 archive gate. A successful exact main SHA is automatically sealed by `sealed-release`: the version tag is created at that green SHA and the release publishes wheel/source artifacts, `RELEASE_IDENTITY.json` and SHA-256 checksums. A version tag cannot silently move to a later commit; changing sealed source requires a version bump.
 
-## Scheduling
-
-After live acceptance:
-
-```bash
-./scripts/install_systemd.sh
-```
-
-This installs user-level Owner Web plus hourly/daily/weekly timers. `scripts/run_cycle.py` uses a Linux `flock` single-instance lock so the three cadences cannot overlap on the same Owner runtime.
-
-## Backup and host recovery
-
-Create a consistent, checksum-manifested backup of Owner/runtime state:
+## Backup / recovery
 
 ```bash
 python3 scripts/backup_owner.py
-```
-
-Restore onto a clean host or an explicitly paused/Observe runtime:
-
-```bash
 python3 scripts/restore_owner.py /path/to/backup --owner-home /path/to/owner-home
 ```
 
-OAuth/auth stores are deliberately not copied. A restored host starts in **Observe**; re-authenticate Amazon MCP, run `preflight.py` and a dry-run, then return to Autopilot when the host is re-bound to live Amazon state.
+OAuth stores are deliberately not copied. Restored hosts return to Observe and must re-bind Amazon MCP, pass preflight and dry-run before returning to Autopilot.
 
-## Amazon contract reference
+## Claim boundary
 
-`vendor/amazon-postman/CERTIFIED_UPSTREAM.json` records the exact Amazon `ads-advanced-tools-docs` commit certified for this release line. `./scripts/sync_amazon_postman.sh` fetches that immutable commit, not whatever happens to be upstream HEAD. A scheduled CI drift check alerts when the upstream Postman contract changes; changing the certified pin requires explicit review.
-
-MCP remains the primary runtime channel. Postman serves as an independent API contract/reference and future deterministic fallback surface.
-
-## Development and archive gate
-
-```bash
-python3 -m pytest -q
-python3 scripts/archive_check.py
-```
-
-See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/RUNBOOK.md`, and `docs/ARCHIVE_ACCEPTANCE.md` before enabling a real account.
+Source/archive sealing and real-account production acceptance are separate. GitHub CI cannot prove OAuth, live Amazon MCP schemas, real write semantics, Emergency Stop timing or ambiguous network outcomes for a particular account. Follow `docs/ARCHIVE_ACCEPTANCE.md` before calling a specific Ubuntu + Amazon account deployment production-accepted.

@@ -1,29 +1,22 @@
 {
-  "version": 1,
-  "strategy": "capability-gated",
+  "version": 2,
+  "strategy": "capability-gated-evergreen",
   "certified_at": "2026-08-13",
-  "required_exec_flags": [
-    "--cd",
-    "--skip-git-repo-check",
-    "--sandbox",
-    "--ask-for-approval",
-    "--strict-config",
-    "--dangerously-bypass-hook-trust",
-    "--ephemeral",
-    "--json",
-    "--output-schema",
-    "--output-last-message",
-    "--config",
-    "--model"
+  "production_runtime": "owner-pinned-active-slot",
+  "update_policy": "candidate-probe-promote-rollback",
+  "required_commands": [
+    {"name":"exec","argv":["exec","--help"],"maturity":"stable","required_tokens":["--strict-config","--sandbox","--ask-for-approval","--dangerously-bypass-hook-trust","--ephemeral","--json","--output-schema","--output-last-message","--config","--model"]},
+    {"name":"mcp","argv":["mcp","--help"],"maturity":"stable","required_tokens":["list","login"]},
+    {"name":"plugin","argv":["plugin","--help"],"maturity":"stable","required_tokens":["list","marketplace"]},
+    {"name":"plugin-marketplace","argv":["plugin","marketplace","--help"],"maturity":"stable","required_tokens":["add","list","upgrade","remove"]},
+    {"name":"features","argv":["features","--help"],"maturity":"stable","required_tokens":["list"]},
+    {"name":"sandbox","argv":["sandbox","--help"],"maturity":"stable","required_tokens":[]},
+    {"name":"doctor","argv":["doctor","--help"],"maturity":"stable","required_tokens":[]},
+    {"name":"update","argv":["update","--help"],"maturity":"stable","required_tokens":[]}
   ],
-  "required_runtime_files": [
-    "config.toml",
-    "hooks.json"
-  ],
-  "required_config_fragments": [
-    "hooks = true",
-    "[mcp_servers.amazon_ads]",
-    "default_tools_approval_mode = \"writes\""
-  ],
-  "notes": "Production is certified against Codex capabilities rather than a cosmetic version string. Preflight fails closed if required non-interactive, structured-output, sandbox, strict-config, hook-trust, or inline-config features disappear."
+  "required_runtime_files": ["config.toml", "hooks.json"],
+  "required_config_fragments": ["hooks = true", "[mcp_servers.amazon_ads]", "default_tools_approval_mode = \"writes\""],
+  "strict_config_smoke": true,
+  "non_dependencies": ["app-server", "remote-control", "cloud"],
+  "notes": "Production selects an Owner-pinned Codex runtime by capability, not by PATH or a cosmetic version string. New Codex versions are candidates until the stable command/flag and strict-config contract passes; promotion is atomic and rollback retains the previous certified runtime."
 }

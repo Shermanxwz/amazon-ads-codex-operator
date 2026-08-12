@@ -1,0 +1,21 @@
+{
+  "name": "amazon-ads-operator",
+  "version": "0.5.0",
+  "description": "Owner-controlled Amazon Ads autonomous operations and diagnostics for Codex.",
+  "repository": "https://github.com/Shermanxwz/amazon-ads-codex-operator",
+  "keywords": ["amazon-ads", "codex", "autonomy", "operations"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Amazon Ads Operator",
+    "shortDescription": "Operate and diagnose the sealed Amazon Ads control plane",
+    "longDescription": "Codex-native skills for status, diagnosis, acceptance and autonomous Amazon Ads operations while Owner policy remains the authority boundary.",
+    "developerName": "Shermanxwz",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Show the Amazon Ads operator status and explain anything unhealthy.",
+      "Diagnose the last Amazon Ads autonomous cycle without weakening Owner limits.",
+      "Check whether this host is ready for live Amazon Ads acceptance."
+    ]
+  }
+}

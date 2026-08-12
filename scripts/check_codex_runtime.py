@@ -1,72 +1,45 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import json
-import os
 from pathlib import Path
 import shutil
-import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = ROOT / "config/codex-compatibility.json"
+ROOT = Path(__file__).resolve().parent
+if ROOT.name != "scripts":
+    ROOT = Path.cwd()
+else:
+    ROOT = ROOT.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+from ads_autopilot.codex_compat import probe_codex, resolve_active_binary
+from ads_autopilot.paths import RuntimePaths
 
 
 def main() -> int:
-    checks: list[tuple[bool, str]] = []
-
-    def add(ok: bool, message: str) -> None:
-        checks.append((bool(ok), message))
-        print(("[OK]   " if ok else "[FAIL] ") + message)
-
-    try:
-        contract = json.loads(CONTRACT.read_text())
-    except Exception as exc:
-        print(f"[FAIL] compatibility contract cannot be parsed: {exc}")
-        return 2
-
-    codex = shutil.which("codex")
-    add(codex is not None, "Codex CLI installed")
-    if not codex:
-        return 2
-
-    version = subprocess.run(
-        [codex, "--version"],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    version_text = (version.stdout or "").strip()
-    add(version.returncode == 0 and bool(version_text), f"Codex version: {version_text or 'unknown'}")
-
-    help_run = subprocess.run(
-        [codex, "exec", "--help"],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    help_text = help_run.stdout or ""
-    add(help_run.returncode == 0, "codex exec --help succeeds")
-    for flag in contract.get("required_exec_flags", []):
-        add(str(flag) in help_text, f"Codex exec capability present: {flag}")
-
-    codex_home_raw = os.environ.get("CODEX_HOME")
-    if codex_home_raw:
-        codex_home = Path(codex_home_raw).expanduser().resolve()
-        for name in contract.get("required_runtime_files", []):
-            add((codex_home / str(name)).exists(), f"CODEX_HOME runtime file exists: {name}")
-        config_path = codex_home / "config.toml"
-        config_text = config_path.read_text() if config_path.exists() else ""
-        for fragment in contract.get("required_config_fragments", []):
-            add(str(fragment) in config_text, f"CODEX_HOME config contract: {fragment}")
+    parser = argparse.ArgumentParser(description="Probe a Codex CLI against the archive-certified capability contract")
+    parser.add_argument("--binary", help="Codex binary to probe; defaults to Owner ACTIVE runtime, then PATH")
+    parser.add_argument("--json", action="store_true", help="Emit one machine-readable JSON report")
+    ns = parser.parse_args()
+    paths = RuntimePaths.resolve(ROOT)
+    binary = ns.binary or resolve_active_binary(paths)
+    if binary == "codex" and not shutil.which("codex"):
+        report = {"compatible": False, "binary": "codex", "checks": [{"name": "binary-executable", "ok": False, "required": True, "detail": "Codex CLI not found"}]}
     else:
-        print("[INFO] CODEX_HOME is not set; CLI capability check only")
-
-    passed = sum(ok for ok, _ in checks)
-    print(f"\n{passed}/{len(checks)} Codex runtime compatibility checks passed")
-    return 0 if all(ok for ok, _ in checks) else 2
+        report = probe_codex(binary, ROOT / "config/codex-compatibility.json")
+    if ns.json:
+        print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Codex runtime: {report.get('version_text') or 'unknown'}")
+        print(f"Binary:        {report.get('binary') or binary}")
+        print(f"SHA-256:       {report.get('binary_sha256') or 'unknown'}")
+        for item in report.get("checks", []):
+            print(("[OK]   " if item.get("ok") else "[FAIL] ") + str(item.get("name")) + " — " + str(item.get("detail") or ""))
+        passed = sum(bool(item.get("ok")) for item in report.get("checks", []))
+        print(f"\n{passed}/{len(report.get('checks', []))} Codex runtime compatibility checks passed")
+    return 0 if report.get("compatible") else 2
 
 
 if __name__ == "__main__":

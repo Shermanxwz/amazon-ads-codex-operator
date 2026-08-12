@@ -1,29 +1,27 @@
 # Changelog
 
+## 0.5.0 — Codex Evergreen / native integration
+
+- Decoupled production execution from Linux PATH. The controller now selects an Owner-pinned ACTIVE Codex runtime and verifies its SHA-256 fingerprint before every invocation.
+- Added a content-addressed Codex runtime registry with candidate registration, capability probe, explicit atomic promotion and rollback to the previous ACTIVE runtime.
+- Bootstrap adopts Codex only when no ACTIVE exists; later system `codex` updates cannot silently replace production.
+- `install_codex_ubuntu.sh` registers updates as candidates instead of promoting them; Amazon MCP setup uses ACTIVE Codex.
+- Expanded the capability contract from a flag list to stable command surfaces plus strict-config smoke testing. Experimental App Server/remote/cloud surfaces are not production dependencies.
+- Added daily Ubuntu latest-Codex compatibility CI as an early-warning drift detector.
+- Added a repo-scoped `amazon-ads-operator` Codex plugin with status, diagnosis, acceptance and autonomy skills. The plugin is UX/instructions only; privileged writes remain behind the sealed control plane.
+- Added automatic green-main release sealing and immutable version/tag identity.
+- Added single-main-branch enforcement so GitHub retains only `main`.
+- Preserved broad AI decision freedom inside Owner scope and monetary limits; no routine per-action approval was introduced.
+
 ## 0.4.0 — Archive hardening / crash-safe sealed execution
 
 - Preserved full-managed AI autonomy inside the Owner-defined scope and monetary envelope; no per-action human approval workflow was introduced.
-- Upgraded Executor grants to deterministic v2 one-use capability tickets. The production `PreToolUse` hook atomically consumes a grant with an `O_EXCL` replay barrier before returning `allow`.
-- Added final-boundary Owner authority checks: Autopilot mode, Emergency Stop, Policy revision and Operator revision are re-read immediately before the Amazon mutation is authorized.
-- Added fresh pre-write Amazon state validation for existing-entity mutations. If live state no longer matches the sealed `before` state, the action is cancelled and the next cycle replans from reality.
-- Added crash/restart reconciliation. Unconsumed grants are safely cancelled; consumed/ambiguous actions are independently re-read from Amazon and are never blindly replayed.
-- Made independent Amazon state the final source of truth when an Executor transport/receipt is ambiguous.
-- Removed the duplicate package-level hook implementation; tests now exercise the exact production hook script deployed by bootstrap.
-- Added a Codex runtime capability contract and host preflight check for the non-interactive structured execution features on which production depends.
-- Pinned the certified Amazon Ads Postman reference to an immutable upstream commit and added scheduled upstream drift detection.
-- Added checksum-manifested SQLite-safe Owner/runtime backup and verified restore tooling. Restored hosts return to Observe until OAuth and live state are re-bound.
-- Expanded the archive gate to verify v0.4 versions, one-use grant semantics, crash recovery presence, fresh-state guard, production hook uniqueness, Codex compatibility contract and Amazon contract pin.
-- Production-certified autonomous ad-product scope remains Sponsored Products; live-account acceptance is still required per `docs/ARCHIVE_ACCEPTANCE.md` for each deployment.
+- Upgraded Executor grants to deterministic v2 one-use capability tickets with atomic replay protection.
+- Added final-boundary Owner authority checks, fresh pre-write state validation, crash/restart reconciliation and independent fresh-state verification.
+- Added direct production-hook tests, Codex capability checks, immutable Amazon contract pinning, verified backup/restore, pinned CI and sealed release artifacts.
 
 ## 0.3.0 — Owner Control / sealed execution
 
-- Added Owner Web as the highest operational authority layer with authenticated mode, scope, monetary limits, emergency stop, immutable revisions, and rollback-to-Observe.
-- Moved Owner policy, runtime DB, signing key, production Codex home, grants, workspaces, and run evidence outside the Git checkout.
-- Added HMAC-signed Owner audit chain and immutable Policy/Operator revision history.
-- Converted live execution to one mutation at a time with authority re-check before every release and immediate independent verification.
-- Added short-lived one-action Executor grants, exact MCP `enabled_tools`, and a frozen `PreToolUse` hook that rejects any tool or argument mismatch.
-- Added deterministic `action_type ↔ tool_name ↔ entity ↔ arguments ↔ after-state` contract validation and Owner profile/account/ASIN scope enforcement.
-- Added daily spend reservation, ambiguous-write retention, cross-cycle cooldowns, campaign creation/budget envelopes, recovery breaker, and two-phase PAUSED campaign activation.
-- Added forensic Codex JSONL event-stream retention.
-- Added hardened systemd units, local `ownerctl` emergency controls, archive checks, and staged production-acceptance documentation.
-- Production-certified autonomous ad-product scope remains Sponsored Products only in this release.
+- Added Owner Web as the highest operational authority layer with authenticated mode, scope, monetary limits, emergency stop, immutable revisions and rollback-to-Observe.
+- Moved Owner policy, runtime DB, signing key, production Codex home, grants, workspaces and run evidence outside the Git checkout.
+- Added HMAC-signed audit history, one-action execution, exact MCP tool/argument grants, budget reservations, cooldowns, recovery breaker and two-phase PAUSED campaign activation.

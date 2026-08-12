@@ -1,0 +1,38 @@
+name: codex-evergreen-compatibility
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codex-evergreen-compatibility
+  cancel-in-progress: true
+
+jobs:
+  latest-codex:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+          check-latest: false
+      - name: Install current official Codex candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://chatgpt.com/codex/install.sh | sh
+          command -v codex
+          codex --version
+      - name: Probe stable Codex capability contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/check_codex_runtime.py --binary "$(command -v codex)" --json | tee codex-compatibility-report.json

@@ -1,34 +1,32 @@
-# v0.4.0 archive status
+# v0.5.0 archive status
 
-Status: **SOURCE ARCHIVE GATE PASSED / REAL-ACCOUNT LIVE ACCEPTANCE PENDING**
+Status policy: **GREEN MAIN AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
 
-The v0.4.0 source candidate has passed the credential-free archive gate on Ubuntu 24.04 in both supported CI runtimes:
+v0.5.0 is designed so source sealing is mechanical rather than a prose claim. The exact `main` SHA must pass `archive-gate` on Ubuntu 24.04 for Python 3.11 and 3.12. Only then does `sealed-release` create `v0.5.0` at that same SHA and publish wheel/source artifacts, `RELEASE_IDENTITY.json` and SHA-256 checksums. If the version tag already points elsewhere, a changed `main` cannot be silently resealed under the same version.
 
-- Python 3.11: **41/41 tests passed; 50/50 archive checks passed**.
-- Python 3.12: **41/41 tests passed; 50/50 archive checks passed**.
-- Python source compiled successfully.
-- Package and runtime version agree on `0.4.0`.
-- Production hook is tested directly; the duplicate hook implementation was removed.
-- One-use Executor grant replay barrier is present and behavior-tested.
-- Final PreToolUse boundary re-checks Owner Autopilot mode, Emergency Stop and Policy/Operator revisions.
-- Existing-entity execution path includes fresh pre-write state validation.
-- Crash/restart reconciliation distinguishes unconsumed actions from consumed/ambiguous actions and never blindly replays the latter.
-- Backup/restore round-trip verifies manifest hashes, SQLite integrity and the signed Owner audit chain.
-- Codex runtime capability contract and host compatibility checker are included.
-- Amazon Postman reference is pinned to an immutable certified upstream commit with a separate contract-drift workflow.
-- All shell scripts passed `bash -n`.
-- Offline wheel build succeeded and contains Owner Web static assets.
-- Rendered systemd service/timer units passed `systemd-analyze verify`; all timer calendars parsed successfully.
-- Source scan found no Amazon OAuth client-id pattern, bearer token, PEM private key or AWS access-key pattern.
-- Archive CI pins GitHub Actions SHAs and test tooling versions and runs a Python 3.11/3.12 matrix.
-- A tag-triggered sealed-release workflow re-runs the archive gate and emits wheel/source artifacts, SHA-256 sums and release identity before publishing a GitHub Release.
+## Codex Evergreen seal
 
-## Autonomy status
+- Production Controller selects an Owner-pinned ACTIVE Codex runtime instead of following PATH.
+- ACTIVE binary fingerprint is checked before use and recorded with each Codex invocation.
+- New Codex versions are registered as content-addressed candidates and capability-probed before promotion.
+- Promotion and rollback are atomic registry transitions; previous ACTIVE remains rollback target.
+- Bootstrap only adopts PATH Codex when no ACTIVE exists, so later system updates cannot silently replace production.
+- Amazon MCP OAuth/configuration commands use ACTIVE Codex.
+- Daily Ubuntu CI installs the current official Codex and probes the same contract for early compatibility drift.
+- Stable Codex execution/MCP/plugin surfaces are dependencies; explicitly experimental surfaces are not.
 
-v0.4 does **not** add routine per-action Owner approval. Codex remains free to optimize inside the Owner-defined Sponsored Products scope and monetary envelope. The new controls harden execution correctness, replay resistance, recovery and reproducibility rather than shrinking the business decision space.
+## Native integration seal
 
-## What this status does not certify
+The repo includes an official-shape `.codex-plugin/plugin.json`, four focused skills, and a repo marketplace at `.agents/plugins/marketplace.json`. This makes Codex the native operator UX without creating a parallel privileged Amazon mutation path.
 
-Credential-free CI cannot certify a real Amazon Ads deployment. OAuth, live MCP tool/schema binding, fresh-state race drill, micro-live reversible writes, crash/restart reconciliation against real Amazon state, PAUSED-create/verify/enable lifecycle, Emergency Stop timing and ambiguous-failure behavior remain required per `docs/ARCHIVE_ACCEPTANCE.md` before a **specific Ubuntu host + Amazon account** can be called production-accepted.
+## Repository seal
 
-Source sealing and live deployment acceptance are intentionally separate claims.
+The repository policy is one branch: `main`. `single-main-branch` deletes non-main branches after main pushes and verifies only main remains.
+
+## Authority status
+
+v0.5.0 does **not** reduce AI business autonomy. Codex remains free to optimize inside Owner-defined Sponsored Products scope and monetary limits. Evergreen hardening controls runtime replacement, replay, stale state, crash recovery and release identity—not routine business choices.
+
+## Claim boundary
+
+Credential-free GitHub CI cannot certify a real Amazon Ads deployment. OAuth, live MCP tool/schema binding, fresh-state race drill, micro-live reversible writes, crash/restart reconciliation against real Amazon state, PAUSED-create/verify/enable lifecycle, Emergency Stop timing and ambiguous-failure behavior remain required per `docs/ARCHIVE_ACCEPTANCE.md` before a specific Ubuntu host + Amazon account is called production-accepted.

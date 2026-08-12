@@ -1,53 +1,68 @@
 name: sealed-release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: [archive-gate]
+    types: [completed]
 
 permissions:
   contents: write
 
+concurrency:
+  group: sealed-release
+  cancel-in-progress: false
+
 jobs:
   release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
           check-latest: false
-      - name: Validate immutable release identity
+      - name: Validate exact green main identity
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          [[ "$main_sha" == "$RELEASE_SHA" ]] || { echo "Archive-passing SHA is no longer main HEAD" >&2; exit 2; }
           version="$(python3 - <<'PY'
           import tomllib
           print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
           PY
           )"
-          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match package version v$version" >&2
-            exit 2
-          fi
-          notes="docs/RELEASE_${GITHUB_REF_NAME^^}.md"
-          if [[ ! -f "$notes" ]]; then
-            echo "Release notes missing: $notes" >&2
-            exit 2
-          fi
-          git fetch -q origin main
-          main_sha="$(git rev-parse origin/main)"
-          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
-            echo "Release tag must point exactly at the current main HEAD: tag=$GITHUB_SHA main=$main_sha" >&2
-            exit 3
+          tag="v$version"
+          notes="docs/RELEASE_${tag^^}.md"
+          [[ -f "$notes" ]] || { echo "Release notes missing: $notes" >&2; exit 2; }
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "RELEASE_NOTES=$notes" >> "$GITHUB_ENV"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/tmp/tag.json 2>/dev/null; then
+            tagged="$(python3 - <<'PY'
+          import json
+          value=json.load(open('/tmp/tag.json'))
+          print(value['object']['sha'])
+          PY
+          )"
+            [[ "$tagged" == "$RELEASE_SHA" ]] || { echo "Tag $tag already seals another SHA; bump version before changing main" >&2; exit 3; }
+            echo "Tag $tag already seals this SHA; publish step is idempotent."
           fi
       - name: Install pinned archive tooling
         run: python -m pip install --disable-pip-version-check setuptools==84.0.0 wheel==0.48.0 pytest==9.1.1
-      - name: Re-run source archive gate
+      - name: Re-run source archive gate on sealed SHA
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python scripts/archive_check.py
@@ -57,43 +72,44 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           python -m pip wheel . --no-deps --no-build-isolation -w dist
-          git archive --format=tar.gz --prefix="amazon-ads-codex-operator-${GITHUB_REF_NAME}/" -o "dist/amazon-ads-codex-operator-${GITHUB_REF_NAME}.tar.gz" "$GITHUB_SHA"
-
+          git archive --format=tar.gz --prefix="amazon-ads-codex-operator-${RELEASE_TAG}/" -o "dist/amazon-ads-codex-operator-${RELEASE_TAG}.tar.gz" "$RELEASE_SHA"
           amazon_commit="$(python3 - <<'PY'
           import json
           print(json.load(open('vendor/amazon-postman/CERTIFIED_UPSTREAM.json'))['commit'])
           PY
           )"
           codex_contract_sha256="$(sha256sum config/codex-compatibility.json | awk '{print $1}')"
-          cat > dist/RELEASE_IDENTITY.json <<EOF
+          cat > dist/RELEASE_IDENTITY.json <<IDENTITY
           {
-            "tag": "$GITHUB_REF_NAME",
-            "commit": "$GITHUB_SHA",
+            "tag": "$RELEASE_TAG",
+            "commit": "$RELEASE_SHA",
             "repository": "$GITHUB_REPOSITORY",
             "source_archive_gate": "passed",
             "certified_amazon_postman_commit": "$amazon_commit",
             "codex_compatibility_sha256": "$codex_contract_sha256"
           }
-          EOF
-
-          (
-            cd dist
-            sha256sum *.whl *.tar.gz RELEASE_IDENTITY.json > SHA256SUMS
-          )
+          IDENTITY
+          (cd dist && sha256sum *.whl *.tar.gz RELEASE_IDENTITY.json > SHA256SUMS)
           cat dist/RELEASE_IDENTITY.json
           cat dist/SHA256SUMS
-      - name: Publish GitHub Release
+      - name: Publish immutable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          notes="docs/RELEASE_${GITHUB_REF_NAME^^}.md"
-          gh release create "$GITHUB_REF_NAME" \
+          if ! gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$RELEASE_TAG" -f sha="$RELEASE_SHA" >/dev/null
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists for this sealed SHA."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" \
             dist/*.whl \
             dist/*.tar.gz \
             dist/SHA256SUMS \
             dist/RELEASE_IDENTITY.json \
             --verify-tag \
-            --title "Amazon Ads Codex Operator $GITHUB_REF_NAME" \
-            --notes-file "$notes"
+            --title "Amazon Ads Codex Operator $RELEASE_TAG" \
+            --notes-file "$RELEASE_NOTES"

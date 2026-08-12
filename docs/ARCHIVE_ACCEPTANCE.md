@@ -1,76 +1,82 @@
 # Archive / production acceptance gates
 
-A source release may be **archive-ready** while a specific Amazon account deployment is still **live-acceptance pending**. Do not collapse these two states.
-
-The v0.4 goal is high-autonomy engineering: AI remains free to act inside the Owner envelope. Acceptance proves that the execution machinery cannot duplicate, replay, outrun Owner changes or silently drift—not that a human approves routine actions.
+A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5 preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime and recovery machinery rather than adding routine human approval.
 
 ## A. Source/archive gate
 
-Required before tagging/releasing source:
+Required before automatic sealing:
 
-- all Python compiles;
-- complete test suite passes;
-- supported Python CI matrix passes;
-- JSON configs/schemas parse;
-- Web static assets are packaged in the wheel;
-- package/runtime release versions agree;
-- no runtime Owner files or known credential/token patterns are present in source;
-- project MCP base config keeps writes gated until the sealed Executor release;
-- atomic Executor uses one enabled MCP tool + a signed exact-input grant;
-- the actual production hook is behavior-tested, not a duplicate implementation;
-- a grant can be consumed exactly once and replay is denied;
-- the final hook boundary re-checks Owner mode, Emergency Stop and policy/operator revisions;
-- existing-entity mutation path contains a fresh pre-write state guard;
-- crash/restart path reconciles consumed/ambiguous actions from fresh Amazon state instead of blind replay;
-- Owner revision/audit/emergency-stop tests pass;
-- consistent backup/restore round-trip verifies SQLite integrity and signed Owner audit history;
-- Codex runtime compatibility contract covers the required non-interactive structured-execution capabilities;
-- Amazon Postman contract reference is pinned to an immutable certified upstream commit;
-- shell scripts pass syntax validation;
-- systemd calendars and rendered service/timer units validate cleanly;
-- Codex machine-readable JSONL event logging is enabled for forensic evidence;
-- `archive_check.py` exits 0.
+- all Python compiles and the complete test suite passes on supported Python CI;
+- JSON configs/schemas, Codex plugin manifest and repo marketplace parse;
+- package/runtime/plugin release versions agree;
+- Owner Web assets are packaged in the wheel;
+- repository tree contains no runtime Owner/auth files or known credential/token patterns;
+- project MCP base config keeps writes gated until sealed Executor release;
+- one-use grants, exact MCP tool/arguments, final Owner re-check, fresh pre-write state guard and crash reconciliation remain covered;
+- deployed production hook is behavior-tested directly;
+- backup/restore, SQLite integrity and signed Owner audit verification pass;
+- Codex Evergreen contract, registry, candidate promotion/rollback and ACTIVE runner binding tests pass;
+- production runner records ACTIVE runtime identity/fingerprint evidence;
+- Amazon Postman reference remains pinned to an immutable certified upstream commit;
+- shell scripts and rendered systemd units validate;
+- repo-scoped Codex plugin/skills and single-main-branch/release workflows are present;
+- `archive_check.py` exits 0 on the exact main SHA.
 
-## B. Host deployment gate
+`sealed-release` is allowed to create the version tag only after `archive-gate` succeeds for the exact current main SHA.
 
-Required on the Ubuntu host:
+## B. Ubuntu host gate
 
-- Owner Home permissions and signing key are private;
-- frozen hook source hash matches the vetted project hook;
+Required before any live mutation:
+
+- Owner Home/signing key permissions are private;
+- frozen hook hash matches the vetted source;
 - dedicated `CODEX_HOME` has hooks enabled and Amazon Ads MCP configured;
-- `scripts/check_codex_runtime.py` / `preflight.py` accept the installed Codex capabilities;
-- Owner audit chain and runtime SQLite integrity pass;
-- repository is mounted/read as code, not used for runtime secrets;
-- Web remains loopback-only or is fronted by an explicitly secured TLS proxy;
-- a real `scripts/backup_owner.py` backup completes and its manifest is retained privately;
-- a restore drill to a separate temporary Owner Home passes checksum, SQLite and audit-chain validation;
-- reboot recovery leaves timers/Web healthy and does not replay any previously consumed action;
-- a deliberately interrupted test action demonstrates the distinction between an unconsumed grant (safe cancel) and consumed/ambiguous grant (fresh reconciliation, never blind retry).
+- `python3 scripts/codex_runtime.py status` shows an Owner-private ACTIVE slot with valid SHA-256 integrity;
+- `scripts/check_codex_runtime.py` and `preflight.py` accept the ACTIVE runtime;
+- changing/updating PATH Codex does not change ACTIVE identity;
+- a compatible candidate can be registered, promoted and rolled back while Owner policy remains unchanged;
+- Owner audit chain/runtime SQLite integrity pass;
+- backup and restore drill succeeds;
+- reboot recovery leaves timers/Web healthy and does not replay consumed actions.
 
-## C. Real Amazon account staged acceptance
+## C. Codex update acceptance drill
 
-Not reproducible in a credential-free build sandbox and therefore must be completed after OAuth:
+For a new Codex candidate on a production host:
 
-1. **Observe only:** verify Profile/account/marketplace/currency binding, read/report coverage and live MCP schemas.
+1. Capture ACTIVE identity with `python3 scripts/codex_runtime.py status`.
+2. Install/update system Codex and confirm ACTIVE identity is unchanged.
+3. Register the new binary as candidate and inspect the capability probe.
+4. Do not promote if any required stable command/flag or strict-config check fails.
+5. If compatible, promote deliberately; run preflight, Observe/dry-run and Amazon MCP read checks.
+6. Run at least one controlled cycle with independent verification.
+7. Exercise `python3 scripts/codex_runtime.py rollback` once during initial host certification and confirm the previous runtime becomes ACTIVE again.
+8. Re-promote only after the rollback drill proves recovery works.
+
+## D. Real Amazon account staged acceptance
+
+Not reproducible in credential-free CI:
+
+1. **Observe:** verify Profile/account/marketplace/currency binding, reporting coverage and authenticated live MCP schemas.
 2. **Dry-run:** inspect representative plans and exact MCP tool/argument contracts while AI retains normal planning freedom.
-3. **Fresh-state drill:** change a harmless test entity externally between planning and release and confirm the stale sealed action is blocked/replanned rather than written over the new state.
-4. **Micro-live:** use a deliberately low daily ceiling for one reversible bid/budget mutation; confirm one-use grant consumption, result parsing and independent verification.
-5. **Ambiguous transport drill:** after the Amazon tool boundary, induce/simulate a client-side failure where practical; confirm the controller independently re-reads Amazon and does not blindly replay.
-6. **Restart drill:** interrupt a controlled cycle around Executor execution and confirm startup reconciliation either proves the intended state or pauses with an uncertain reservation.
-7. **Create lifecycle:** create one CODEX-prefixed PAUSED campaign, verify lineage, then enable in a separate cycle; confirm it cannot enable before verification.
-8. **Emergency-stop test:** trigger Emergency Stop while a controlled Executor is still preparing work and confirm a not-yet-submitted subsequent mutation is denied at the final hook boundary.
-9. **Contract drift check:** record the authenticated live MCP tool/schema set used by the accepted deployment and verify no critical unexpected drift.
-10. Run several clean autonomous cycles and review the first complete attribution window before materially widening the Owner monetary envelope.
+3. **Fresh-state drill:** externally change a harmless test entity between planning/release and confirm stale intent is blocked/replanned.
+4. **Micro-live:** low ceiling, one reversible bid/budget mutation; confirm one-use grant, outcome parsing and independent verification.
+5. **Ambiguous transport drill:** induce/simulate client-side failure after tool boundary and prove no blind replay.
+6. **Restart drill:** interrupt around Executor execution; startup reconciliation must prove state or pause with uncertain reservation.
+7. **Create lifecycle:** CODEX-prefixed PAUSED campaign, verify lineage, enable only in a later authorized cycle.
+8. **Emergency Stop:** trigger while Executor prepares work; any not-yet-submitted next mutation must be denied at final hook boundary.
+9. **Contract drift:** record authenticated live MCP tool/schema set used by the accepted host.
+10. Run several clean autonomous cycles and inspect the first complete attribution window before materially widening Owner monetary authority.
 
-## D. Release identity
+## E. Release identity
 
-Before calling a source release sealed:
+A source release is sealed only when:
 
-- final `main` commit passes the archive workflow;
-- package version, runtime version, changelog and archive status identify the same release;
-- immutable Git tag points exactly at that CI-passing commit;
-- GitHub Release identifies the same tag/commit and states clearly that source sealing does not itself certify a credentialed Amazon deployment;
-- the certified Amazon contract commit and Codex compatibility contract are included in that tagged tree;
-- release notes record any remaining live-acceptance items rather than converting them into unsupported claims.
+- final `main` SHA passes archive-gate;
+- package/runtime/plugin/changelog/release notes identify the same version;
+- immutable tag points exactly at that green main SHA;
+- GitHub Release artifacts and `RELEASE_IDENTITY.json` identify the same SHA;
+- SHA-256 manifest covers wheel, source archive and release identity;
+- certified Amazon contract commit and Codex compatibility contract are inside the tagged tree;
+- repository branch list contains only `main`.
 
-Only after section C is complete should that **specific Ubuntu + Amazon account deployment** be described as production-accepted. Sections A, B and D can establish a reproducible archive-grade source/host package without weakening the AI's in-envelope autonomy.
+Only after section D is complete should that **specific Ubuntu + Amazon account deployment** be described as production-accepted.

@@ -1,2 +1,2 @@
-"""Codex-native Amazon Ads autonomous control plane."""
-__version__ = "0.4.0"
+"""Codex Evergreen-native Amazon Ads autonomous control plane."""
+__version__ = "0.5.0"

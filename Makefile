@@ -1,4 +1,4 @@
-.PHONY: test archive-check codex-compat preflight bootstrap web dry-run hourly daily weekly emergency-stop status backup
+.PHONY: test archive-check codex-compat codex-runtime-status codex-adopt codex-rollback preflight bootstrap web dry-run hourly daily weekly emergency-stop status backup
 
 bootstrap:
 	python3 scripts/bootstrap.py
@@ -8,6 +8,15 @@ web:
 
 codex-compat:
 	python3 scripts/check_codex_runtime.py
+
+codex-runtime-status:
+	python3 scripts/codex_runtime.py status
+
+codex-adopt:
+	python3 scripts/codex_runtime.py adopt-current
+
+codex-rollback:
+	python3 scripts/codex_runtime.py rollback
 
 preflight:
 	python3 scripts/preflight.py
