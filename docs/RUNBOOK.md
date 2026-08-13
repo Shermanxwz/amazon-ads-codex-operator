@@ -8,10 +8,11 @@
 4. Configure Owner account/profile/timezone/ceiling while mode remains Observe.
 5. `python3 scripts/preflight.py`
 6. `python3 scripts/archive_check.py`
-7. Run a daily dry-run and inspect Owner run artifacts.
-8. Complete staged live acceptance before choosing Autopilot.
+7. Run `python3 scripts/virtual_acceptance.py --report virtual-acceptance-report.json` when certifying a host/source checkout.
+8. Run a daily dry-run and inspect Owner run artifacts.
+9. Complete staged live acceptance before choosing Autopilot.
 
-`preflight.py` validates the installed Codex runtime capabilities, production hook/config deployment, Owner audit chain, SQLite integrity and Amazon MCP registration.
+`preflight.py` validates the Owner-pinned ACTIVE Codex runtime capabilities/fingerprint, production hook/config deployment, domain-separated Executor-grant key, Owner audit chain, SQLite integrity and Amazon MCP registration.
 
 ## Normal autonomy
 
@@ -61,9 +62,16 @@ Create a consistent private backup:
 python3 scripts/backup_owner.py
 ```
 
-The backup contains consistent SQLite snapshots, signing key, production deterministic config/hook files and a SHA-256 manifest. It intentionally does **not** contain Codex/Amazon OAuth auth stores.
+Backup manifest v2 contains:
 
-Store backup directories with the same sensitivity as the production Owner Home because the signing key is included.
+- consistent `owner.db` / `runtime.db` SQLite snapshots;
+- Owner/action master signing key;
+- domain-separated Executor-grant key;
+- deterministic production Codex config and frozen Hook;
+- the Codex runtime registry plus all content-addressed slots referenced by ACTIVE, PREVIOUS and registered candidates;
+- SHA-256, size and mode for every archived file.
+
+It intentionally does **not** contain Codex/Amazon OAuth/auth stores. Store backup directories with the same sensitivity as the production Owner Home because signing material is included.
 
 ## Host-loss restore
 
@@ -73,19 +81,30 @@ Stop/pause old services first. Restore to a clean Owner Home:
 python3 scripts/restore_owner.py /path/to/backup --owner-home /path/to/new-owner-home
 ```
 
-For an existing paused/Observe target, `--force` is required.
+For an existing paused/Observe target, `--force` is required. Before reconstitution, restore deliberately removes stale OAuth/auth state, grants, disposable workspaces, run artifacts, old Codex runtime slots/registry, lock files and SQLite sidecars from the target.
 
 After restore:
 
 1. confirm restore reported Owner audit/runtime integrity success;
-2. re-run `bootstrap.py` if the release deployment requires refreshed deterministic files;
-3. re-authenticate Codex/Amazon MCP;
+2. confirm `python3 scripts/codex_runtime.py status` shows the restored ACTIVE identity with valid SHA-256 integrity and PREVIOUS remains available when present in the backup;
+3. re-authenticate Codex/Amazon MCP (OAuth is intentionally not restored);
 4. run `preflight.py`;
-5. run an Observe/dry-run cycle;
-6. confirm live Profile/account binding and fresh state;
-7. only then switch back to Autopilot.
+5. run `python3 scripts/virtual_acceptance.py --report virtual-acceptance-report.json` for host/control-plane mechanics when appropriate;
+6. run an Observe/dry-run cycle against the real account;
+7. confirm live Profile/account binding and fresh Amazon state;
+8. only then switch back to Autopilot.
 
 Restore intentionally leaves the Owner mode in Observe. This is a host-rebinding step, not a reduction of the standing business autonomy model.
+
+## Codex update / rollback
+
+1. Record current identity with `python3 scripts/codex_runtime.py status`.
+2. Install/update system Codex; production ACTIVE must remain unchanged.
+3. Register/probe the new candidate.
+4. Do not promote if any required capability fails.
+5. Promote explicitly, then run preflight + Observe/dry-run + live read checks.
+6. Exercise `python3 scripts/codex_runtime.py rollback` during host certification and verify PREVIOUS becomes ACTIVE.
+7. Re-promote only after the rollback drill is proven.
 
 ## Owner policy rollback
 
@@ -96,10 +115,10 @@ Use the Web revision section or the revision restore API. Restore creates a *new
 1. Emergency stop or Pause.
 2. Create a verified runtime backup.
 3. Pull/review the new code/tag.
-4. Run tests and `archive_check.py`.
-5. Run `bootstrap.py` again to deploy the newly vetted frozen PreToolUse hook into Owner Home.
-6. Run `preflight.py`; this must pass the Codex capability contract.
-7. Run an Observe dry-run.
+4. Run tests, `archive_check.py`, and virtual full-stack acceptance.
+5. Run `bootstrap.py` again to deploy the newly vetted frozen PreToolUse hook and verify/derive the grant-only key.
+6. Run `preflight.py`; this must pass the ACTIVE Codex capability contract.
+7. Run an Observe dry-run against the real account.
 8. Only then re-enable Autopilot.
 
 Never silently advance `vendor/amazon-postman/CERTIFIED_UPSTREAM.json`. Upstream drift is a review signal; accepting a new contract pin belongs in a new tested release.

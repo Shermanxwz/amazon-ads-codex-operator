@@ -14,6 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from ads_autopilot.codex_compat.registry import load_registry, registry_path, slots_root
 from ads_autopilot.paths import RuntimePaths
 
 UTC = timezone.utc
@@ -43,8 +44,48 @@ def copy_private(source: Path, destination: Path, mode: int) -> None:
     destination.chmod(mode)
 
 
+def snapshot_codex_runtimes(paths: RuntimePaths, destination: Path) -> dict | None:
+    source_registry = registry_path(paths)
+    if not source_registry.exists():
+        return None
+    registry = load_registry(paths)
+    records: dict[str, dict] = {}
+    for key in ("active", "previous"):
+        value = registry.get(key)
+        if isinstance(value, dict) and value.get("id"):
+            records[str(value["id"])] = value
+    for runtime_id, value in (registry.get("candidates") or {}).items():
+        if isinstance(value, dict):
+            records[str(runtime_id)] = value
+
+    copied_ids: list[str] = []
+    for runtime_id, record in sorted(records.items()):
+        source = slots_root(paths) / runtime_id / "codex"
+        if not source.is_file():
+            raise RuntimeError(f"Codex runtime slot missing during backup: {runtime_id}")
+        actual = sha256(source)
+        expected = str(record.get("binary_sha256") or runtime_id)
+        if actual != runtime_id or actual != expected:
+            raise RuntimeError(
+                f"Codex runtime slot fingerprint mismatch during backup: id={runtime_id} expected={expected} actual={actual}"
+            )
+        copy_private(source, destination / "codex-runtimes" / "slots" / runtime_id / "codex", 0o500)
+        copied_ids.append(runtime_id)
+
+    registry_destination = destination / "codex-runtimes" / "registry.json"
+    registry_destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    registry_destination.write_text(json.dumps(registry, indent=2, sort_keys=True) + "\n")
+    registry_destination.chmod(0o600)
+    return {
+        "active_id": (registry.get("active") or {}).get("id") if isinstance(registry.get("active"), dict) else None,
+        "previous_id": (registry.get("previous") or {}).get("id") if isinstance(registry.get("previous"), dict) else None,
+        "runtime_ids": copied_ids,
+        "registry_sha256": sha256(registry_destination),
+    }
+
+
 def create_backup(paths: RuntimePaths, destination_root: Path | None = None) -> Path:
-    required = [paths.owner_db, paths.runtime_db, paths.signing_key]
+    required = [paths.owner_db, paths.runtime_db, paths.signing_key, paths.grant_signing_key]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise RuntimeError(f"runtime is not initialized; missing: {missing}")
@@ -66,11 +107,8 @@ def create_backup(paths: RuntimePaths, destination_root: Path | None = None) -> 
 
     sqlite_backup(paths.owner_db, destination / "owner.db")
     sqlite_backup(paths.runtime_db, destination / "runtime.db")
-    copy_private(
-        paths.signing_key,
-        destination / "secrets/operator_signing_key",
-        0o600,
-    )
+    copy_private(paths.signing_key, destination / "secrets/operator_signing_key", 0o600)
+    copy_private(paths.grant_signing_key, destination / "secrets/executor_grant_signing_key", 0o600)
 
     optional = [
         (paths.codex_home / "config.toml", destination / "codex-home/config.toml", 0o600),
@@ -80,6 +118,8 @@ def create_backup(paths: RuntimePaths, destination_root: Path | None = None) -> 
     for source, target, mode in optional:
         if source.exists():
             copy_private(source, target, mode)
+
+    codex_runtime_snapshot = snapshot_codex_runtimes(paths, destination)
 
     files = []
     for path in sorted(destination.rglob("*")):
@@ -95,17 +135,17 @@ def create_backup(paths: RuntimePaths, destination_root: Path | None = None) -> 
         )
 
     manifest = {
-        "version": 1,
+        "version": 2,
         "created_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "source_owner_home": str(paths.owner_home),
         "contains_oauth_auth_store": False,
+        "codex_runtime_snapshot": codex_runtime_snapshot,
         "files": files,
     }
     manifest_path = destination / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
     manifest_path.chmod(0o600)
 
-    # Make the directory entry and manifest durable before reporting success.
     for directory in [destination, backup_root]:
         try:
             fd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))

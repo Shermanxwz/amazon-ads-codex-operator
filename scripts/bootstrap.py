@@ -20,7 +20,7 @@ from ads_autopilot.codex_compat import (
 from ads_autopilot.owner_store import OwnerStore
 from ads_autopilot.paths import RuntimePaths
 from ads_autopilot.security import hash_password
-from ads_autopilot.sealing import Sealer, bootstrap_key
+from ads_autopilot.sealing import Sealer, bootstrap_executor_grant_key, bootstrap_key
 from ads_autopilot.state import Store
 
 
@@ -28,6 +28,7 @@ def main() -> int:
     paths = RuntimePaths.resolve(ROOT)
     paths.ensure_directories()
     key_path = bootstrap_key(paths.signing_key)
+    bootstrap_executor_grant_key(key_path, paths.grant_signing_key)
     sealer = Sealer.from_path(key_path)
     owner = OwnerStore(paths.owner_db, sealer.key)
 
@@ -66,6 +67,7 @@ def main() -> int:
     print(f"Owner DB:   {paths.owner_db}")
     print(f"Runtime DB: {paths.runtime_db}")
     print(f"Signing key: {paths.signing_key} (mode 0600)")
+    print(f"Executor grant key: {paths.grant_signing_key} (derived, mode 0600)")
     print(f"Codex home: {paths.codex_home}")
     runtime = active_identity(paths)
     if runtime:

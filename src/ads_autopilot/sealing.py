@@ -9,6 +9,26 @@ from typing import Any
 
 from .canonical import canonical_json, digest
 
+_GRANT_KDF_CONTEXT = b"amazon-ads-codex/executor-grant/v2"
+
+
+def _is_executor_grant(value: Any) -> bool:
+    if not isinstance(value, dict) or int(value.get("version") or 0) != 2:
+        return False
+    required = {"action_hash", "tool_name", "arguments", "policy_revision", "operator_revision", "expires_at"}
+    return required.issubset(value)
+
+
+def executor_grant_signing_key(master_key: bytes) -> bytes:
+    """Derive the hook-visible Executor grant key from the Owner master key.
+
+    The frozen hook receives only this derived key. It can validate one-use grants
+    but cannot forge Owner audit entries or normal sealed-action signatures.
+    """
+    if len(master_key) < 32:
+        raise ValueError("master signing key must contain at least 32 bytes")
+    return hmac.new(master_key, _GRANT_KDF_CONTEXT, hashlib.sha256).hexdigest().encode()
+
 
 class Sealer:
     def __init__(self, key: bytes):
@@ -31,7 +51,8 @@ class Sealer:
         return cls.from_path(Path(root) / ".secrets" / "operator_signing_key")
 
     def sign(self, value: Any) -> str:
-        return hmac.new(self.key, canonical_json(value).encode(), hashlib.sha256).hexdigest()
+        key = executor_grant_signing_key(self.key) if _is_executor_grant(value) else self.key
+        return hmac.new(key, canonical_json(value).encode(), hashlib.sha256).hexdigest()
 
     def verify(self, value: Any, signature: str) -> bool:
         return hmac.compare_digest(self.sign(value), signature)
@@ -61,3 +82,27 @@ def bootstrap_key(path: str | Path) -> Path:
     except OSError:
         pass
     return p
+
+
+def bootstrap_executor_grant_key(master_path: str | Path, derived_path: str | Path) -> Path:
+    master = Sealer.from_path(master_path).key
+    expected = executor_grant_signing_key(master)
+    destination = Path(derived_path)
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if destination.exists():
+        actual = destination.read_bytes().strip()
+        if not hmac.compare_digest(actual, expected):
+            raise RuntimeError("executor grant signing key does not match Owner master key")
+    else:
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.write(fd, expected)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    os.chmod(destination, 0o600)
+    try:
+        destination.parent.chmod(0o700)
+    except OSError:
+        pass
+    return destination

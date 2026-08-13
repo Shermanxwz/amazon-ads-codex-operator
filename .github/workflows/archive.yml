@@ -38,3 +38,38 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python scripts/archive_check.py
+
+  virtual-acceptance:
+    name: virtual-full-stack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+          check-latest: false
+      - name: Create isolated Python environment
+        run: python -m venv .acceptance-venv
+      - name: Install pinned build tooling in isolated environment
+        run: .acceptance-venv/bin/python -m pip install --disable-pip-version-check setuptools==84.0.0 wheel==0.48.0
+      - name: Build and install sealed wheel in isolated environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p virtual-dist
+          .acceptance-venv/bin/python -m pip wheel . --no-deps --no-build-isolation -w virtual-dist
+          .acceptance-venv/bin/python -m pip install --no-deps virtual-dist/*.whl
+          .acceptance-venv/bin/python - <<'PY'
+          import ads_autopilot
+          print('installed_version=' + ads_autopilot.__version__)
+          PY
+      - name: Full virtual production acceptance
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: .acceptance-venv/bin/python scripts/virtual_acceptance.py --report virtual-acceptance-report.json
+      - name: Print virtual acceptance evidence
+        if: always()
+        run: cat virtual-acceptance-report.json || true

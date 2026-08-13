@@ -1,32 +1,40 @@
-# v0.5.0 archive status
+# v0.5.1 archive status
 
-Status policy: **GREEN MAIN AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
+Status policy: **GREEN MAIN + FULL VIRTUAL STACK AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
 
-v0.5.0 is designed so source sealing is mechanical rather than a prose claim. The exact `main` SHA must pass `archive-gate` on Ubuntu 24.04 for Python 3.11 and 3.12. Only then does `sealed-release` create `v0.5.0` at that same SHA and publish wheel/source artifacts, `RELEASE_IDENTITY.json` and SHA-256 checksums. If the version tag already points elsewhere, a changed `main` cannot be silently resealed under the same version.
+v0.5.1 makes the source seal depend on both static/unit evidence and a complete credential-free production-path simulation. The exact `main` SHA must pass `archive-gate` on Ubuntu 24.04 for Python 3.11 and 3.12 **and** the independent `virtual-full-stack` job. Only then may `sealed-release` create the version tag at that same SHA and publish wheel/source artifacts, `RELEASE_IDENTITY.json` and SHA-256 checksums.
 
-## Codex Evergreen seal
+## Signing-key separation seal
 
-- Production Controller selects an Owner-pinned ACTIVE Codex runtime instead of following PATH.
-- ACTIVE binary fingerprint is checked before use and recorded with each Codex invocation.
-- New Codex versions are registered as content-addressed candidates and capability-probed before promotion.
-- Promotion and rollback are atomic registry transitions; previous ACTIVE remains rollback target.
-- Bootstrap only adopts PATH Codex when no ACTIVE exists, so later system updates cannot silently replace production.
-- Amazon MCP OAuth/configuration commands use ACTIVE Codex.
-- Daily Ubuntu CI installs the current official Codex and probes the same contract for early compatibility drift.
-- Stable Codex execution/MCP/plugin surfaces are dependencies; explicitly experimental surfaces are not.
+The Owner/action master signing key and the hook-visible Executor-grant key are now domain-separated. Bootstrap derives the grant-only key, preflight verifies it, the controller signs v2 grants through the derived domain, and the frozen hook reads only that derived secret. Owner audit/action signing remains on the master key.
 
-## Native integration seal
+## Full virtual-stack seal
 
-The repo includes an official-shape `.codex-plugin/plugin.json`, four focused skills, and a repo marketplace at `.agents/plugins/marketplace.json`. This makes Codex the native operator UX without creating a parallel privileged Amazon mutation path.
+The virtual acceptance uses a self-contained fake Codex executable and persistent virtual Amazon state, but runs the real production Controller, RuntimePaths, OwnerStore, SQLite ledger/state, Codex Evergreen registry, frozen PreToolUse hook, grant files, runner isolation, verification and recovery logic. It covers:
 
-## Repository seal
+- fresh bootstrap, capability probe, ACTIVE snapshot and preflight;
+- Observe planning/sealing with zero external mutation;
+- Autopilot planner → policy → fresh prewrite → one-use grant → frozen hook → mutation → independent verifier;
+- candidate promotion and rollback;
+- backup/restore of Owner state plus ACTIVE/PREVIOUS Codex runtime identity;
+- transport failure after a successful write, reconciled from fresh external state with no replay;
+- crash after grant consumption but before a write, retained as uncertain and never blindly replayed;
+- restart reconciliation and automatic pause;
+- Emergency Stop applied while Executor waits immediately before the hook boundary;
+- rejection of a concurrent overlapping cycle by the Linux `flock` single-instance lock.
 
-The repository policy is one branch: `main`. `single-main-branch` deletes non-main branches after main pushes and verifies only main remains.
+## Disaster-recovery seal
 
-## Authority status
+Backup manifest v2 includes Owner/runtime SQLite, signing key, production Codex config/hook and the content-addressed Codex runtime registry/slots needed to restore ACTIVE and PREVIOUS identities. Restore verifies hashes, rewrites runtime slot paths to the target Owner Home, clears stale OAuth/auth state, grants, prior runtime slots, disposable workspaces, run artifacts, lock files and SQLite sidecars, validates SQLite/audit/runtime integrity, and always returns Owner mode to Observe.
 
-v0.5.0 does **not** reduce AI business autonomy. Codex remains free to optimize inside Owner-defined Sponsored Products scope and monetary limits. Evergreen hardening controls runtime replacement, replay, stale state, crash recovery and release identity—not routine business choices.
+## Codex Evergreen / native integration seal
+
+Production still selects an Owner-pinned ACTIVE Codex runtime instead of following PATH; fingerprints are checked before use and recorded per invocation. New Codex versions remain candidates until capability-probed and explicitly promoted, with PREVIOUS retained for rollback. The repo continues to expose the native `amazon-ads-operator` plugin/skills without creating another privileged Amazon mutation path.
+
+## Repository and authority seal
+
+The GitHub repository policy remains one branch: `main`. v0.5.1 does **not** reduce AI business autonomy: Codex remains free to optimize inside Owner-defined Sponsored Products scope and monetary limits; hardening constrains authorization mechanics, runtime replacement and recovery rather than routine business choices.
 
 ## Claim boundary
 
-Credential-free GitHub CI cannot certify a real Amazon Ads deployment. OAuth, live MCP tool/schema binding, fresh-state race drill, micro-live reversible writes, crash/restart reconciliation against real Amazon state, PAUSED-create/verify/enable lifecycle, Emergency Stop timing and ambiguous-failure behavior remain required per `docs/ARCHIVE_ACCEPTANCE.md` before a specific Ubuntu host + Amazon account is called production-accepted.
+The virtual Amazon boundary is intentionally credential-free. It proves deterministic control-plane mechanics but cannot certify Amazon OAuth, a particular advertiser/profile, the current authenticated live MCP schema, Amazon-side timing/429 behavior or a real-money mutation. Those host/account-specific checks remain mandatory per `docs/ARCHIVE_ACCEPTANCE.md` before a specific Ubuntu host + Amazon account is called production-accepted.

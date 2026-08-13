@@ -7,12 +7,13 @@ hooks execute that frozen copy, never the mutable Git checkout.
 The Executor grant is a capability ticket, not a reusable approval. An exact
 Amazon MCP call is allowed only after this hook has:
 
-1. verified the HMAC signature and expiry;
+1. verified the grant-only HMAC signature and expiry;
 2. re-read Owner mode/revisions at the final tool boundary; and
 3. atomically consumed the grant before returning ``allow``.
 
-The model never receives Owner DB or signing-key contents. The trusted hook may
-read them because it is part of the deterministic authorization boundary.
+The model never receives Owner DB or signing-key contents. The hook receives
+only a derived Executor-grant key; it does not receive the Owner master key used
+for audit history and normal sealed-action signatures.
 """
 from __future__ import annotations
 
@@ -90,7 +91,9 @@ def verify_grant(grant_path: Path, codex_home: Path) -> tuple[dict[str, Any], Pa
     if not action_hash or grant_file.name != f"{action_hash}.json":
         raise ValueError("grant filename/action hash mismatch")
 
-    key = (owner_home / "secrets/operator_signing_key").read_bytes().strip()
+    key = (owner_home / "secrets/executor_grant_signing_key").read_bytes().strip()
+    if len(key) < 32:
+        raise ValueError("executor grant key is invalid")
     expected = hmac.new(key, canonical_json(value).encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, signature):
         raise ValueError("invalid grant signature")
@@ -132,13 +135,7 @@ def verify_live_owner_authority(owner_home: Path, grant: dict[str, Any]) -> None
 
 
 def consume_grant(grant_file: Path, grant: dict[str, Any], event: dict[str, Any]) -> Path:
-    """Atomically claim a grant once before allowing the side effect.
-
-    ``O_EXCL`` is the replay barrier. If two tool calls race with the same
-    signed grant, only one can create the consumed marker. The marker is kept
-    until the controller has durably recorded verification, which also gives
-    crash recovery evidence that the tool boundary was crossed.
-    """
+    """Atomically claim a grant once before allowing the side effect."""
     marker = Path(str(grant_file) + ".consumed")
     record = {
         "version": 1,
@@ -163,8 +160,6 @@ def consume_grant(grant_file: Path, grant: dict[str, Any], event: dict[str, Any]
     try:
         grant_file.unlink()
     except FileNotFoundError as exc:
-        # The consumed marker intentionally remains. Fail closed: a future
-        # invocation will see it and cannot reuse this capability.
         raise ValueError("grant disappeared during atomic consumption") from exc
     return marker
 
@@ -185,18 +180,8 @@ def main() -> int:
         if bare is not None:
             lower = bare.lower()
             mutation = (
-                "create",
-                "update",
-                "delete",
-                "archive",
-                "pause",
-                "enable",
-                "resume",
-                "mutate",
-                "remove",
-                "addnegative",
-                "setbid",
-                "setbudget",
+                "create", "update", "delete", "archive", "pause", "enable",
+                "resume", "mutate", "remove", "addnegative", "setbid", "setbudget",
             )
             if any(token in lower for token in mutation):
                 return deny(f"{mode} role cannot call mutation-like Amazon MCP tool {bare}")

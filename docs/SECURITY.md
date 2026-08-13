@@ -7,17 +7,24 @@ Security controls protect the Owner envelope and execution correctness **without
 ## Non-negotiable invariants
 
 1. AI cannot edit or expand Owner authority.
-2. The signing key is never forwarded in the model environment or copied into the disposable workspace.
-3. Billing, payment, account-admin, credential/user-management and permanent-delete operations are hard-blocked in code.
-4. No live mutation is released without deterministic policy acceptance and HMAC sealing.
-5. Atomic Executor receives one exact Amazon MCP tool and one exact argument object.
-6. Every Executor grant is a one-use capability: the production PreToolUse hook atomically consumes it before returning `allow`; the same grant cannot authorize a replay.
-7. At the final tool boundary, the hook re-reads Owner Autopilot mode, Emergency Stop, Policy revision and Operator revision. A stale authority snapshot cannot authorize a new mutation.
-8. Existing-entity mutations receive a fresh Amazon state check before release. A stale sealed `before` state is cancelled/replanned rather than written over newer state.
-9. A consumed or otherwise ambiguous mutation is never blindly replayed after transport/process/host failure. Fresh Amazon state is used to reconcile the intended `after` state; unresolved exposure remains uncertain and pauses the system.
-10. Independent fresh read verification is required before normal completion.
-11. Owner Emergency Stop never auto-clears.
-12. Codex JSONL event streams are retained per invocation for forensic reconstruction, but event logs never grant authority.
+2. Owner/action signing material and the derived Executor-grant key are never forwarded in the model environment or copied into disposable workspaces.
+3. The frozen PreToolUse hook receives only the derived Executor-grant key; it does not possess the Owner master signing key used for audit history and normal sealed-action signatures.
+4. Billing, payment, account-admin, credential/user-management and permanent-delete operations are hard-blocked in code.
+5. No live mutation is released without deterministic policy acceptance and HMAC sealing.
+6. Atomic Executor receives one exact Amazon MCP tool and one exact argument object.
+7. Every Executor grant is a one-use capability: the production PreToolUse hook atomically consumes it before returning `allow`; the same grant cannot authorize a replay.
+8. At the final tool boundary, the hook re-reads Owner Autopilot mode, Emergency Stop, Policy revision and Operator revision. A stale authority snapshot cannot authorize a new mutation.
+9. Existing-entity mutations receive a fresh Amazon state check before release. A stale sealed `before` state is cancelled/replanned rather than written over newer state.
+10. A consumed or otherwise ambiguous mutation is never blindly replayed after transport/process/host failure. Fresh Amazon state is used to reconcile the intended `after` state; unresolved exposure remains uncertain and pauses the system.
+11. Independent fresh read verification is required before normal completion.
+12. Owner Emergency Stop never auto-clears.
+13. Codex JSONL event streams are retained per invocation for forensic reconstruction, but event logs never grant authority.
+
+## Signing-key separation
+
+`secrets/operator_signing_key` is the Owner/controller master used for signed Owner audit history and normal sealed-action signatures. `secrets/executor_grant_signing_key` is deterministically domain-separated from that master and is the **only** HMAC secret available to the frozen hook. Executor grants are recognized by their v2 capability shape and are signed with the derived key; ordinary sealed actions remain signed with the Owner master key.
+
+This means a defect isolated to the hook's grant-verification secret cannot be used to forge the Owner audit chain or ordinary sealed-action signatures. Bootstrap and preflight verify that the derived key matches the current Owner master and is stored mode `0600`.
 
 ## Codex hooks
 
@@ -32,6 +39,7 @@ PreToolUse is defense in depth rather than the only trust boundary. The control 
 - one-tool Executor `enabled_tools`;
 - read-only shell sandbox;
 - live Owner authority re-check;
+- grant-only signing-key separation;
 - atomic one-use grant consumption;
 - fresh pre-write state guard;
 - one-action execution;
@@ -76,9 +84,13 @@ Prefer SSH tunneling. If reverse-proxying, terminate TLS and do not expose the p
 
 ## Backups
 
-Verified backups contain the controller signing key and are therefore as sensitive as the live Owner Home. Keep them private and access-controlled. OAuth/auth stores are intentionally excluded so a copied backup does not automatically become a credentialed Amazon/Codex session.
+Verified v2 backups contain the Owner master signing key, derived Executor-grant key, Owner/runtime SQLite state, production Codex config/hook and the content-addressed Codex runtime registry/slots needed to restore ACTIVE/PREVIOUS identities. They are therefore as sensitive as the live Owner Home and must remain private and access-controlled.
 
-Restore verifies manifest hashes, SQLite integrity and the Owner signed audit chain, then returns the recovered runtime to Observe until OAuth and current Amazon state are re-established.
+OAuth/auth stores are intentionally excluded. Restore clears stale OAuth/auth state, grants, disposable workspaces, run artifacts, prior runtime slots/registry, lock files and SQLite sidecars before reconstitution; then it verifies manifest hashes, runtime fingerprints, SQLite integrity and the Owner signed audit chain and returns the recovered runtime to Observe until OAuth and current Amazon state are re-established.
+
+## Virtual acceptance
+
+The fresh-Ubuntu `virtual-full-stack` CI path exercises the real Controller, Owner databases, Codex runtime registry, frozen hook, one-use grants, verification, recovery, Emergency Stop and process lock against a credential-free virtual Amazon state. It is a source/control-plane proof, not a substitute for authenticated live Amazon acceptance.
 
 ## GitHub
 

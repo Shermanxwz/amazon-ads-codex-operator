@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1 — Final acceptance / disaster-recovery seal
+
+- Domain-separated Executor grant signing from the Owner master key; the frozen hook now receives only the derived grant-verification secret and cannot use it to forge Owner audit/action signatures.
+- Added a full credential-free virtual production acceptance that runs the real Controller against a self-contained fake Codex runtime and persistent virtual Amazon state, including the actual frozen PreToolUse hook.
+- The virtual acceptance covers bootstrap/preflight, Observe no-write behavior, sealed one-action execution, fresh prewrite state, exact grant consumption, independent verification, Codex candidate promotion/rollback, transport failure after write, crash after grant consumption before write, restart reconciliation, Emergency Stop at the final tool boundary and the Linux single-instance lock.
+- Added a dedicated fresh Ubuntu 24.04 `virtual-full-stack` GitHub Actions job using an isolated Python virtual environment and an installed wheel before exercising the production checkout/scripts.
+- Upgraded backup manifests to v2 and preserved content-addressed Codex ACTIVE/PREVIOUS/candidate runtime slots plus the registry, with SHA-256 verification and path rebinding on restore.
+- Hardened restore so stale OAuth/auth state, grants, disposable workspaces, run artifacts, prior Codex runtime registry/slots, lock files and SQLite sidecars cannot survive an in-place disaster recovery.
+- Kept v1 backup verification compatibility and retained the rule that every restored host returns to Observe before real Amazon re-binding.
+- Made archive version consistency dynamic across package, runtime, plugin and release notes instead of embedding one release number in the gate.
+
 ## 0.5.0 — Codex Evergreen / native integration
 
 - Decoupled production execution from Linux PATH. The controller now selects an Owner-pinned ACTIVE Codex runtime and verifies its SHA-256 fingerprint before every invocation.

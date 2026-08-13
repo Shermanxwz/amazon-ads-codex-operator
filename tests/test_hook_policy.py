@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
@@ -8,8 +10,9 @@ import sqlite3
 import subprocess
 import sys
 
+from ads_autopilot.canonical import canonical_json
 from ads_autopilot.paths import RuntimePaths
-from ads_autopilot.sealing import Sealer, bootstrap_key
+from ads_autopilot.sealing import Sealer, bootstrap_executor_grant_key, bootstrap_key
 
 UTC = timezone.utc
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,8 +35,7 @@ def invoke(event: dict, env: dict[str, str]):
 
 def init_owner_db(
     paths: RuntimePaths,
-    *,
-    mode: str = "autopilot",
+    *, mode: str = "autopilot",
     emergency_stop: int = 0,
     policy_revision: int = 1,
     operator_revision: int = 1,
@@ -75,6 +77,7 @@ def setup_grant(
     paths = RuntimePaths.resolve(project, tmp_path / "owner")
     paths.ensure_directories()
     bootstrap_key(paths.signing_key)
+    bootstrap_executor_grant_key(paths.signing_key, paths.grant_signing_key)
     init_owner_db(paths)
     sealer = Sealer.from_path(paths.signing_key)
     body = {
@@ -114,20 +117,22 @@ def decision(obj: dict) -> str:
     return obj["hookSpecificOutput"]["permissionDecision"]
 
 
-def test_executor_consumes_exact_grant_once(tmp_path: Path):
-    paths, grant = setup_grant(tmp_path)
-    event = {
+def exact_event() -> dict:
+    return {
         "session_id": "s1",
         "turn_id": "t1",
         "tool_name": "mcp__amazon_ads__updateCampaigns",
         "tool_input": {"campaignId": "1", "budget": 10},
     }
-    out = invoke(event, env_for(paths, grant))
+
+
+def test_executor_consumes_exact_grant_once(tmp_path: Path):
+    paths, grant = setup_grant(tmp_path)
+    out = invoke(exact_event(), env_for(paths, grant))
     assert decision(out) == "allow"
     assert not grant.exists()
     assert Path(str(grant) + ".consumed").exists()
-
-    replay = invoke(event, env_for(paths, grant))
+    replay = invoke(exact_event(), env_for(paths, grant))
     assert decision(replay) == "deny"
 
 
@@ -135,20 +140,13 @@ def test_executor_denies_argument_or_tool_change(tmp_path: Path):
     paths, grant = setup_grant(tmp_path)
     env = env_for(paths, grant)
     out = invoke(
-        {
-            "tool_name": "mcp__amazon_ads__updateCampaigns",
-            "tool_input": {"campaignId": "1", "budget": 11},
-        },
+        {"tool_name": "mcp__amazon_ads__updateCampaigns", "tool_input": {"campaignId": "1", "budget": 11}},
         env,
     )
     assert decision(out) == "deny"
     assert grant.exists()
-
     out = invoke(
-        {
-            "tool_name": "mcp__amazon_ads__deleteCampaigns",
-            "tool_input": {"campaignId": "1", "budget": 10},
-        },
+        {"tool_name": "mcp__amazon_ads__deleteCampaigns", "tool_input": {"campaignId": "1", "budget": 10}},
         env,
     )
     assert decision(out) == "deny"
@@ -157,33 +155,31 @@ def test_executor_denies_argument_or_tool_change(tmp_path: Path):
 
 def test_executor_denies_expired_or_tampered_grant(tmp_path: Path):
     for expired, tamper in [(True, False), (False, True)]:
-        paths, grant = setup_grant(
-            tmp_path / ("expired" if expired else "tampered"),
-            expired=expired,
-            tamper=tamper,
-        )
-        out = invoke(
-            {
-                "tool_name": "mcp__amazon_ads__updateCampaigns",
-                "tool_input": {"campaignId": "1", "budget": 10},
-            },
-            env_for(paths, grant),
-        )
+        paths, grant = setup_grant(tmp_path / ("expired" if expired else "tampered"), expired=expired, tamper=tamper)
+        out = invoke(exact_event(), env_for(paths, grant))
         assert decision(out) == "deny"
         assert grant.exists()
+
+
+def test_hook_uses_grant_only_key_not_owner_master_key(tmp_path: Path):
+    paths, grant = setup_grant(tmp_path)
+    value = json.loads(grant.read_text())
+    unsigned = dict(value)
+    unsigned.pop("signature")
+    master = paths.signing_key.read_bytes().strip()
+    value["signature"] = hmac.new(master, canonical_json(unsigned).encode(), hashlib.sha256).hexdigest()
+    grant.write_text(json.dumps(value))
+    out = invoke(exact_event(), env_for(paths, grant))
+    assert decision(out) == "deny"
+    assert grant.exists()
+    assert paths.grant_signing_key.read_bytes().strip() != master
 
 
 def test_executor_rechecks_emergency_stop_at_tool_boundary(tmp_path: Path):
     paths, grant = setup_grant(tmp_path)
     with sqlite3.connect(paths.owner_db) as conn:
         conn.execute("UPDATE control_state SET emergency_stop=1 WHERE id=1")
-    out = invoke(
-        {
-            "tool_name": "mcp__amazon_ads__updateCampaigns",
-            "tool_input": {"campaignId": "1", "budget": 10},
-        },
-        env_for(paths, grant),
-    )
+    out = invoke(exact_event(), env_for(paths, grant))
     assert decision(out) == "deny"
     assert grant.exists()
 
@@ -192,13 +188,7 @@ def test_executor_rechecks_owner_revision_at_tool_boundary(tmp_path: Path):
     paths, grant = setup_grant(tmp_path)
     with sqlite3.connect(paths.owner_db) as conn:
         conn.execute("UPDATE owner_documents SET revision=2 WHERE kind='policy'")
-    out = invoke(
-        {
-            "tool_name": "mcp__amazon_ads__updateCampaigns",
-            "tool_input": {"campaignId": "1", "budget": 10},
-        },
-        env_for(paths, grant),
-    )
+    out = invoke(exact_event(), env_for(paths, grant))
     assert decision(out) == "deny"
     assert grant.exists()
 
@@ -207,13 +197,7 @@ def test_executor_requires_autopilot_at_tool_boundary(tmp_path: Path):
     paths, grant = setup_grant(tmp_path)
     with sqlite3.connect(paths.owner_db) as conn:
         conn.execute("UPDATE control_state SET mode='observe' WHERE id=1")
-    out = invoke(
-        {
-            "tool_name": "mcp__amazon_ads__updateCampaigns",
-            "tool_input": {"campaignId": "1", "budget": 10},
-        },
-        env_for(paths, grant),
-    )
+    out = invoke(exact_event(), env_for(paths, grant))
     assert decision(out) == "deny"
     assert grant.exists()
 

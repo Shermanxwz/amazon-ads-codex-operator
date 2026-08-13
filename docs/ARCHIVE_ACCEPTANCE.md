@@ -1,6 +1,6 @@
 # Archive / production acceptance gates
 
-A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5 preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime and recovery machinery rather than adding routine human approval.
+A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5.x preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime and recovery machinery rather than adding routine human approval.
 
 ## A. Source/archive gate
 
@@ -8,21 +8,22 @@ Required before automatic sealing:
 
 - all Python compiles and the complete test suite passes on supported Python CI;
 - JSON configs/schemas, Codex plugin manifest and repo marketplace parse;
-- package/runtime/plugin release versions agree;
+- package/runtime/plugin release versions agree and matching release notes exist;
 - Owner Web assets are packaged in the wheel;
 - repository tree contains no runtime Owner/auth files or known credential/token patterns;
 - project MCP base config keeps writes gated until sealed Executor release;
 - one-use grants, exact MCP tool/arguments, final Owner re-check, fresh pre-write state guard and crash reconciliation remain covered;
 - deployed production hook is behavior-tested directly;
-- backup/restore, SQLite integrity and signed Owner audit verification pass;
+- backup/restore preserves SQLite/audit integrity **and** the content-addressed ACTIVE/PREVIOUS Codex runtime identities while clearing stale OAuth/grant/runtime side state;
 - Codex Evergreen contract, registry, candidate promotion/rollback and ACTIVE runner binding tests pass;
 - production runner records ACTIVE runtime identity/fingerprint evidence;
 - Amazon Postman reference remains pinned to an immutable certified upstream commit;
 - shell scripts and rendered systemd units validate;
 - repo-scoped Codex plugin/skills and single-main-branch/release workflows are present;
+- a fresh Ubuntu 24.04 `virtual-full-stack` job passes bootstrap → preflight → Observe → sealed live path → frozen hook → verification → ambiguous/restart recovery → Emergency Stop/process-lock drills inside an isolated Python virtual environment;
 - `archive_check.py` exits 0 on the exact main SHA.
 
-`sealed-release` is allowed to create the version tag only after `archive-gate` succeeds for the exact current main SHA.
+`sealed-release` is allowed to create the version tag only after the whole `archive-gate` workflow succeeds for the exact current main SHA, including every Python matrix job and `virtual-full-stack`.
 
 ## B. Ubuntu host gate
 
@@ -36,7 +37,7 @@ Required before any live mutation:
 - changing/updating PATH Codex does not change ACTIVE identity;
 - a compatible candidate can be registered, promoted and rolled back while Owner policy remains unchanged;
 - Owner audit chain/runtime SQLite integrity pass;
-- backup and restore drill succeeds;
+- backup and restore drill restores ACTIVE/PREVIOUS runtime identity and returns Owner mode to Observe without carrying stale OAuth or grant state;
 - reboot recovery leaves timers/Web healthy and does not replay consumed actions.
 
 ## C. Codex update acceptance drill
@@ -54,7 +55,7 @@ For a new Codex candidate on a production host:
 
 ## D. Real Amazon account staged acceptance
 
-Not reproducible in credential-free CI:
+Not reproducible in credential-free CI, including the virtual Amazon harness:
 
 1. **Observe:** verify Profile/account/marketplace/currency binding, reporting coverage and authenticated live MCP schemas.
 2. **Dry-run:** inspect representative plans and exact MCP tool/argument contracts while AI retains normal planning freedom.
@@ -71,7 +72,7 @@ Not reproducible in credential-free CI:
 
 A source release is sealed only when:
 
-- final `main` SHA passes archive-gate;
+- final `main` SHA passes the complete archive-gate, including full virtual-stack acceptance;
 - package/runtime/plugin/changelog/release notes identify the same version;
 - immutable tag points exactly at that green main SHA;
 - GitHub Release artifacts and `RELEASE_IDENTITY.json` identify the same SHA;

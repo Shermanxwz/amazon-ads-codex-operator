@@ -1,4 +1,4 @@
-.PHONY: test archive-check codex-compat codex-runtime-status codex-adopt codex-rollback preflight bootstrap web dry-run hourly daily weekly emergency-stop status backup
+.PHONY: test archive-check virtual-acceptance codex-compat codex-runtime-status codex-adopt codex-rollback preflight bootstrap web dry-run hourly daily weekly emergency-stop status backup
 
 bootstrap:
 	python3 scripts/bootstrap.py
@@ -26,6 +26,9 @@ test:
 
 archive-check:
 	python3 scripts/archive_check.py
+
+virtual-acceptance:
+	python3 scripts/virtual_acceptance.py --report virtual-acceptance-report.json
 
 dry-run:
 	python3 scripts/run_cycle.py daily --dry-run

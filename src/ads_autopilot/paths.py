@@ -15,6 +15,7 @@ class RuntimePaths:
     owner_db: Path
     runtime_db: Path
     signing_key: Path
+    grant_signing_key: Path
     codex_home: Path
     run_root: Path
     workspace_root: Path
@@ -34,6 +35,7 @@ class RuntimePaths:
             owner_db=home / "owner.db",
             runtime_db=home / "runtime.db",
             signing_key=home / "secrets" / "operator_signing_key",
+            grant_signing_key=home / "secrets" / "executor_grant_signing_key",
             codex_home=home / "codex-home",
             run_root=home / "runs",
             workspace_root=home / "codex-workspaces",

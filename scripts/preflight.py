@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from ads_autopilot.codex_compat import active_identity
 from ads_autopilot.owner_store import OwnerStore
 from ads_autopilot.paths import RuntimePaths
-from ads_autopilot.sealing import Sealer
+from ads_autopilot.sealing import Sealer, executor_grant_signing_key
 from ads_autopilot.state import Store
 
 checks: list[tuple[bool, str]] = []
@@ -55,8 +55,15 @@ def main() -> int:
 
     add(paths.owner_home.exists(), f"Owner home exists: {paths.owner_home}")
     add(paths.owner_db.exists(), "Owner DB initialized")
-    add(paths.signing_key.exists(), "Controller signing key exists")
-    add(mode(paths.signing_key) == 0o600, "Signing key permissions are 0600")
+    add(paths.signing_key.exists(), "Owner/action signing key exists")
+    add(mode(paths.signing_key) == 0o600, "Owner/action signing key permissions are 0600")
+    add(paths.grant_signing_key.exists(), "Derived Executor-grant signing key exists")
+    add(mode(paths.grant_signing_key) == 0o600, "Executor-grant signing key permissions are 0600")
+    if paths.signing_key.exists() and paths.grant_signing_key.exists():
+        sealer = Sealer.from_path(paths.signing_key)
+        expected = executor_grant_signing_key(sealer.key)
+        add(paths.grant_signing_key.read_bytes().strip() == expected, "Executor-grant key is correctly domain-separated from Owner master key")
+        add(paths.grant_signing_key.read_bytes().strip() != sealer.key, "Frozen hook does not use the Owner master signing key")
     add(
         mode(paths.owner_home) is not None and (mode(paths.owner_home) & 0o077) == 0,
         "Owner home is not group/world accessible",
