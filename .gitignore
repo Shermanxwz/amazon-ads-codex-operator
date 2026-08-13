@@ -17,9 +17,10 @@ __pycache__/
 .pytest_cache/
 .venv/
 .acceptance-venv/
-dist/
 virtual-dist/
 virtual-acceptance-report.json
+virtual-surface-report.json
+dist/
 build/
 *.egg-info/
 vendor/amazon-postman/postman/

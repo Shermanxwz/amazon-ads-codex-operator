@@ -95,6 +95,13 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: .acceptance-venv/bin/python scripts/virtual_acceptance.py --report virtual-acceptance-report.json
+      - name: Owner Web and systemd production-surface acceptance
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: .acceptance-venv/bin/python scripts/virtual_surface_acceptance.py --report virtual-surface-report.json
       - name: Print virtual acceptance evidence
         if: always()
-        run: cat virtual-acceptance-report.json || true
+        shell: bash
+        run: |
+          cat virtual-acceptance-report.json || true
+          cat virtual-surface-report.json || true

@@ -1,6 +1,6 @@
 {
   "name": "amazon-ads-operator",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Owner-controlled Amazon Ads autonomous operations and diagnostics for Codex.",
   "repository": "https://github.com/Shermanxwz/amazon-ads-codex-operator",
   "keywords": ["amazon-ads", "codex", "autonomy", "operations"],

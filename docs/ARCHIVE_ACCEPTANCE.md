@@ -1,6 +1,6 @@
 # Archive / production acceptance gates
 
-A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5.x preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime, recovery, reproducibility and provenance machinery rather than adding routine human approval.
+A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5.x preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime, recovery, operator/deployment surfaces, reproducibility and provenance machinery rather than adding routine human approval.
 
 ## A. Source/archive gate
 
@@ -12,24 +12,41 @@ Required before automatic sealing:
 - PEP 517/build/test tooling and pytest transitive dependencies are exactly version-pinned;
 - GitHub Actions dependencies are pinned by exact commit SHA to certified Node-24-era releases;
 - Owner Web assets are packaged in the wheel;
-- current repository tree **and complete Git history** contain no forbidden runtime Owner/auth/key/database filenames or known credential/token patterns;
+- current repository tree and complete Git history contain no forbidden runtime Owner/auth/key/database filenames or known credential/token patterns;
 - project MCP base config keeps writes gated until sealed Executor release;
 - one-use grants, exact MCP tool/arguments, final Owner re-check, fresh pre-write state guard and crash reconciliation remain covered;
 - deployed production hook is behavior-tested directly;
 - the Owner-owned master-key file is the canonical production signing identity and the Hook receives only the domain-separated Executor-grant key;
-- backup/restore preserves SQLite/audit integrity **and** the content-addressed ACTIVE/PREVIOUS Codex runtime identities while clearing stale OAuth/grant/runtime side state;
+- backup/restore preserves SQLite/audit integrity and content-addressed ACTIVE/PREVIOUS Codex runtime identities while clearing stale OAuth/grant/runtime side state;
 - Codex Evergreen contract, registry, candidate promotion/rollback and ACTIVE runner binding tests pass;
 - production runner records ACTIVE runtime identity/fingerprint evidence;
 - Amazon Postman reference remains pinned to an immutable certified upstream commit;
 - shell scripts and rendered systemd units validate;
 - repo-scoped Codex plugin/skills, main-only branch hygiene, release, drift and release-integrity workflows are present;
-- a fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` job passes bootstrap → preflight → Observe → sealed live path → frozen hook → verification → Evergreen promote/rollback → backup/restore → ambiguous/restart recovery → Emergency Stop/process-lock drills inside an isolated virtual environment;
+- a fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` job passes all ten credential-free production scenarios listed below;
 - the virtual job double-builds the wheel using commit-derived `SOURCE_DATE_EPOCH` and requires byte identity;
 - `archive_check.py` exits 0 on the exact full-history main checkout.
 
-`sealed-release` is allowed to create the version tag only after the whole `archive-gate` workflow succeeds for the exact current main SHA, including every Python matrix job and `virtual-full-stack`.
+`sealed-release` may create a version tag only after the whole `archive-gate` workflow succeeds for the exact current main SHA, including every Python matrix job and `virtual-full-stack`.
 
-## B. Ubuntu host gate
+## B. Ten-scenario credential-free virtual production acceptance
+
+The mandatory `virtual-full-stack` consists of the control-plane harness plus the production-surface harness:
+
+1. **Fresh bootstrap + preflight:** initialize Owner state, grant key, frozen Hook and Owner-pinned ACTIVE virtual Codex; capability/preflight must pass.
+2. **Observe no-write:** Planner may reason/seal while external virtual Amazon state remains unchanged.
+3. **Sealed live happy path:** Planner → deterministic policy → fresh pre-write state → one-use grant → exact frozen PreToolUse Hook → one mutation → independent Verifier → verified state.
+4. **Evergreen promote/rollback:** compatible candidate promotion changes ACTIVE; rollback restores the exact prior content-addressed runtime.
+5. **Disaster recovery:** backup/restore preserves audit/DB plus ACTIVE runtime identity and removes stale OAuth/auth/grant state; restored Owner mode is Observe.
+6. **Ambiguous after-write transport:** external state proves the intended mutation happened; action verifies without replay.
+7. **Crash after grant consumption before write:** consumed evidence is retained, mutation is not replayed, Owner auto-pauses and restart reconciliation persists uncertainty.
+8. **Emergency Stop + overlap lock:** a second cycle is rejected by Linux `flock`; Emergency Stop triggered while Executor waits at the final Hook boundary denies the not-yet-submitted write.
+9. **Production Owner Web entrypoint:** start the real `scripts/run_web.py` on loopback; verify static UI/security headers/readiness, unauthenticated denial, password login, CSRF rejection/enforcement, policy revision, revision restore, Autopilot transition and Emergency Stop.
+10. **Production systemd install/render path:** run the real `scripts/install_systemd.sh` inside an isolated HOME with `ADS_SYSTEMD_RENDER_ONLY=1`; all five user units must be rendered with no unresolved placeholders, correct project/Owner paths, and pass `systemd-analyze verify` when available. The render-only switch exits immediately before `systemctl`; normal production install behavior is unchanged.
+
+These scenarios intentionally substitute only the external Amazon/Codex network boundary and host service activation. They do not substitute the Controller, Owner DB, runtime DB, policy engine, budget ledger, runtime registry, frozen Hook, grant consumption, verifier, recovery code, Owner Web server or systemd rendering logic.
+
+## C. Ubuntu host gate
 
 Required before any live mutation:
 
@@ -42,9 +59,9 @@ Required before any live mutation:
 - a compatible candidate can be registered, promoted and rolled back while Owner policy remains unchanged;
 - Owner audit chain/runtime SQLite integrity pass;
 - backup and restore drill restores ACTIVE/PREVIOUS runtime identity and returns Owner mode to Observe without carrying stale OAuth or grant state;
-- reboot recovery leaves timers/Web healthy and does not replay consumed actions.
+- actual user-systemd installation succeeds, Owner Web/timers are healthy after login/reboot, and consumed actions are not replayed.
 
-## C. Codex update acceptance drill
+## D. Codex update acceptance drill
 
 For a new Codex candidate on a production host:
 
@@ -57,7 +74,7 @@ For a new Codex candidate on a production host:
 7. Exercise `python3 scripts/codex_runtime.py rollback` once during initial host certification and confirm the previous runtime becomes ACTIVE again.
 8. Re-promote only after the rollback drill proves recovery works.
 
-## D. Real Amazon account staged acceptance
+## E. Real Amazon account staged acceptance
 
 Not reproducible in credential-free CI, including the virtual Amazon harness:
 
@@ -72,11 +89,11 @@ Not reproducible in credential-free CI, including the virtual Amazon harness:
 9. **Contract drift:** record authenticated live MCP tool/schema set used by the accepted host.
 10. Run several clean autonomous cycles and inspect the first complete attribution window before materially widening Owner monetary authority.
 
-## E. Release identity / provenance
+## F. Release identity / provenance
 
 A source release is sealed only when:
 
-- final `main` SHA passes the complete archive-gate, including full virtual-stack acceptance and history privacy checks;
+- final `main` SHA passes the complete archive-gate, including ten-scenario virtual acceptance and history privacy checks;
 - package/runtime/plugin/changelog/release notes identify the same version;
 - the version tag points exactly at that green main SHA and the release workflow refuses to reuse that version for another SHA;
 - release wheel and source archive each pass a two-build byte-identity check before publication;
@@ -89,4 +106,4 @@ A source release is sealed only when:
 
 Repository-level branch protection/rulesets are an account setting outside the source tree. Their absence must not be described as cryptographic immutability; source controls provide exact identity, tamper evidence, provenance and continuous verification.
 
-Only after section D is complete should that **specific Ubuntu + Amazon account deployment** be described as production-accepted.
+Only after section E is complete should that **specific Ubuntu + Amazon account deployment** be described as production-accepted.

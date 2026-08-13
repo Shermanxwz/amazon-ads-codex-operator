@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.3 — Production-surface full-stack acceptance seal
+
+- Extended fresh Ubuntu 24.04 Python-3.12 full-stack certification from eight internal execution/recovery scenarios to ten end-to-end production scenarios.
+- Added a real `scripts/run_web.py` loopback HTTP drill covering static UI, readiness, authentication, CSRF denial/enforcement, Owner policy revision, revision restore, Autopilot transition and Emergency Stop.
+- Added an explicit `ADS_SYSTEMD_RENDER_ONLY=1` certification mode to `install_systemd.sh`; it runs the exact production unit-rendering path inside an isolated HOME without touching the validation host's user services.
+- Added full-stack verification of rendered systemd units, resolved project/Owner paths and `systemd-analyze verify`.
+- Added executable tests that make both production-surface drills mandatory in the archive workflow.
+- Updated `make virtual-acceptance` to run both the control-plane and production-surface harnesses.
+
 ## 0.5.2 — Reproducibility / provenance maintenance seal
 
 - Made the Owner-owned signing-key file the canonical production signing identity; ambient environment variables can no longer override it.

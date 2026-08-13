@@ -1,46 +1,32 @@
-# v0.5.2 archive status
+# v0.5.3 archive status
 
-Status policy: **GREEN MAIN + FULL VIRTUAL STACK + REPRODUCIBLE BUILD + PROVENANCE AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
+Status policy: **GREEN MAIN + 10-SCENARIO FULL VIRTUAL STACK + REPRODUCIBLE BUILD + PROVENANCE AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
 
-v0.5.2 requires the exact `main` SHA to pass the archive matrix on Ubuntu 24.04 for Python 3.11 and 3.12, the independent Python-3.12 `virtual-full-stack`, complete-history privacy checks and byte-reproducible artifact checks. Only then may `sealed-release` create `v0.5.2` at that SHA, create GitHub/Sigstore provenance attestations and publish checksummed release assets.
+v0.5.3 requires the exact `main` SHA to pass the archive matrix on Ubuntu 24.04 for Python 3.11 and 3.12, complete-history privacy checks, byte-reproducible artifact checks and the independent Python-3.12 `virtual-full-stack`. Only then may `sealed-release` create `v0.5.3`, create GitHub/Sigstore provenance attestations and publish checksummed release assets.
 
-## Execution / recovery seal
+## Credential-free full-stack seal
 
-The v0.5.1 trust boundary remains intact: Owner/action master signing and hook-visible Executor-grant signing are domain-separated; one-use grants are atomically consumed; final-boundary Owner mode/Emergency Stop/revision checks remain in the frozen Hook; fresh pre-write state blocks stale intent; ambiguous or crash-surviving writes are reconciled from fresh external state and are never blindly replayed; ACTIVE/PREVIOUS Codex runtimes are content-addressed, fingerprinted, backed up and restored.
+The v0.5.1/v0.5.2 trust and supply-chain controls remain intact: Owner/action and Executor-grant signing domains are separated; one-use grants are atomic; the frozen Hook re-checks live Owner authority; fresh pre-write state blocks stale intent; crash/transport ambiguity is reconciled without blind replay; ACTIVE/PREVIOUS Codex runtimes are content-addressed and recoverable; Owner signing identity is file-canonical; the archive scans complete Git history; Actions/tooling are pinned; wheel/source builds are double-built byte-identically; releases receive checksum identity and GitHub/Sigstore provenance.
 
-The production master signing identity is now canonical to `ADS_OWNER_HOME/secrets/operator_signing_key`. Ambient process environment cannot override that identity, preventing runtime signatures from diverging from the key archived by backup/restore.
+The full-stack gate now requires **ten** production scenarios:
 
-## Full virtual-stack seal
+1. fresh bootstrap + preflight;
+2. Observe no-write;
+3. complete sealed write + independent verification;
+4. Codex candidate promotion + rollback;
+5. backup/restore preserving ACTIVE runtime and clearing stale auth/grants;
+6. after-write transport ambiguity reconciled without replay;
+7. after-consume/pre-write crash retained as uncertainty and never replayed;
+8. final-boundary Emergency Stop + Linux `flock` overlap rejection;
+9. real `scripts/run_web.py` loopback HTTP path: UI/readiness, login, CSRF, policy revision, rollback, Autopilot and Emergency Stop;
+10. real `scripts/install_systemd.sh` rendering path in an isolated HOME, with all templates resolved and rendered units passing `systemd-analyze verify`.
 
-The credential-free virtual acceptance continues to drive the real Controller, RuntimePaths, OwnerStore, SQLite ledger/state, Codex Evergreen registry, frozen PreToolUse Hook, one-use grants, runner isolation, verifier, recovery and Linux `flock`. Its eight required scenarios are:
+`ADS_SYSTEMD_RENDER_ONLY=1` exists only to exercise the exact production render path without changing the certification host's user services. Normal production systemd installation is unchanged.
 
-- fresh bootstrap + preflight;
-- Observe with no write;
-- sealed live happy path;
-- Evergreen candidate promotion + rollback;
-- backup/restore preserving ACTIVE runtime identity;
-- successful write followed by ambiguous transport, recovered without replay;
-- grant consumed before write, then restart/uncertainty with no replay;
-- final-boundary Emergency Stop plus concurrent-cycle `flock` rejection.
+## Repository / release boundary
 
-## Reproducibility / supply-chain seal
-
-- certified Python range is exactly 3.11/3.12;
-- Ubuntu 24.04 full-stack and sealed release use Python 3.12;
-- build/test tooling and pytest transitives are exactly pinned in `config/archive-tooling.txt`;
-- GitHub Actions use Node-24-era checkout/setup-python releases pinned to immutable commit SHAs;
-- checkout uses complete history for the archive privacy gate;
-- current tree **and full Git history** are scanned for forbidden Owner/auth/key/database filenames and known credential/token patterns;
-- wheel builds use commit-derived `SOURCE_DATE_EPOCH` and must be byte-identical across two independent build directories;
-- release source archives are also built twice and must be byte-identical;
-- `RELEASE_IDENTITY.json` records commit, contract/tooling hashes, reproducibility mode and source-date epoch.
-
-## Provenance / post-release integrity seal
-
-v0.5.2 release subjects are attested with GitHub Artifact Attestations backed by Sigstore. A scheduled `sealed-release-integrity` job re-downloads every published sealed release, checks `SHA256SUMS`, verifies `RELEASE_IDENTITY` against the Git tag, and requires GitHub attestation verification for v0.5.2 and later.
-
-The repository still intentionally retains only one branch, `main`. Repository-level branch protection/rulesets are a GitHub account setting rather than a source-tree control; the connected GitHub tool available to this project does not expose a write operation for that setting. The source therefore provides tamper evidence, exact release identity and continuous verification, but does not claim that a repository administrator is cryptographically unable to rewrite Git refs.
+The repository intentionally retains only `main`. The current GitHub connector does not expose branch-protection/ruleset writes, and repository API status must not be misrepresented as cryptographic immutability. Source controls instead provide exact tag/commit identity, reproducible artifacts, Sigstore/GitHub provenance and continuous release-integrity verification.
 
 ## Claim boundary
 
-This is the strongest truthful **source/archive + complete credential-free virtual-production seal** the repository can provide. It still cannot prove a particular Amazon advertiser/profile, OAuth session, the current authenticated Amazon MCP schema, Amazon-side throttling/timing or real-money mutation semantics. Those checks remain mandatory per `docs/ARCHIVE_ACCEPTANCE.md` before a specific Ubuntu host + Amazon account is described as production-accepted.
+This is the strongest truthful **source/archive + complete credential-free virtual-production seal** the repository can provide. It cannot prove a particular Amazon advertiser/profile, OAuth session, current authenticated Amazon MCP schema, Amazon-side throttling/timing or real-money mutation semantics. Those remain mandatory host/account-specific acceptance items in `docs/ARCHIVE_ACCEPTANCE.md` before a deployment is called production-accepted.

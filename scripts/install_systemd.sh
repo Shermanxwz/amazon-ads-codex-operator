@@ -30,6 +30,16 @@ render(){
 for name in amazon-ads-codex@.service amazon-ads-owner-web.service amazon-ads-codex-hourly.timer amazon-ads-codex-daily.timer amazon-ads-codex-weekly.timer; do
   render "$ROOT/systemd/$name" "$UNIT_DIR/$name"
 done
+
+# Archive/full-stack certification needs to exercise the exact production
+# rendering path without changing the CI/validation host's user services.
+# Production behavior is unchanged unless this explicit test-only switch is set.
+if [[ "${ADS_SYSTEMD_RENDER_ONLY:-0}" == "1" ]]; then
+  echo "Rendered systemd user units only: $UNIT_DIR"
+  echo "Timers use account timezone: $TIMEZONE"
+  exit 0
+fi
+
 systemctl --user daemon-reload
 systemctl --user enable --now amazon-ads-owner-web.service
 systemctl --user enable --now amazon-ads-codex-hourly.timer amazon-ads-codex-daily.timer amazon-ads-codex-weekly.timer

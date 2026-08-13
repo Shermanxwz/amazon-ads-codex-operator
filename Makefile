@@ -29,6 +29,7 @@ archive-check:
 
 virtual-acceptance:
 	python3 scripts/virtual_acceptance.py --report virtual-acceptance-report.json
+	python3 scripts/virtual_surface_acceptance.py --report virtual-surface-report.json
 
 dry-run:
 	python3 scripts/run_cycle.py daily --dry-run

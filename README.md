@@ -1,8 +1,8 @@
 # Amazon Ads Codex Operator
 
-A Codex-native **Owner-controlled autonomous Amazon Ads control plane** for Ubuntu, built for long-running unattended Sponsored Products optimization with a hard separation between **AI reasoning freedom** and **Owner authority**.
+A Codex-native **Owner-controlled autonomous Amazon Ads control plane** for Ubuntu, designed for unattended Sponsored Products optimization while keeping AI reasoning freedom strictly inside Owner-defined authority and money boundaries.
 
-> Release line: **v0.5.x — Codex Evergreen / archive-sealed native operator.** AI autonomy is not reduced. v0.5.1 sealed the complete virtual execution/recovery path; v0.5.2 adds deterministic rebuilds, complete-history privacy checks, canonical key identity and GitHub/Sigstore release provenance.
+> Release line: **v0.5.x — Codex Evergreen / archive-sealed native operator.** v0.5.3 closes the credential-free end-to-end surface by exercising the real Owner Web entrypoint and production systemd rendering path in addition to the sealed execution/recovery chain.
 
 ## Core rule
 
@@ -46,11 +46,11 @@ Independent Verifier Codex ──► fresh Amazon state
         └── ambiguous/crash → reconcile, never blind replay
 ```
 
-The Owner/action master signing key is not given to the frozen Hook. Executor v2 grants are signed with a deterministic domain-separated key stored separately under Owner Home, so Hook grant verification cannot forge Owner audit history or ordinary sealed-action signatures. The Owner-owned master key file is the canonical signing identity; ambient environment variables cannot replace it.
+The Owner/action master signing key is file-canonical under Owner Home and is never given to the frozen Hook. Executor v2 grants use a deterministic domain-separated key stored separately; Hook grant verification therefore cannot forge Owner audit history or normal sealed-action signatures.
 
 ## Codex Evergreen
 
-Production no longer runs whichever `codex` happens to be on PATH. It uses an Owner-private ACTIVE runtime:
+Production does not run whichever `codex` happens to be on PATH. It uses an Owner-private, SHA-256-verified ACTIVE runtime:
 
 ```text
 ADS_OWNER_HOME/codex-runtimes/
@@ -58,11 +58,7 @@ ADS_OWNER_HOME/codex-runtimes/
 └── slots/<sha256>/codex
 ```
 
-A new Codex install/update is only a **candidate**. It is fingerprinted, copied to a content-addressed slot, probed against `config/codex-compatibility.json`, and cannot become ACTIVE until explicit promotion. The previous ACTIVE is retained for rollback. Every production Codex invocation verifies the ACTIVE fingerprint and writes `*.runtime.json` evidence beside its normal JSONL events.
-
-This means a Linux package/self-update can change PATH without changing the production Amazon Ads runtime. If a future Codex release removes or changes a required stable capability, the candidate is rejected while the existing ACTIVE runtime continues to be selected.
-
-Commands:
+A new Codex install/update becomes only a **candidate**. It is snapshotted into a content-addressed slot, capability-probed against `config/codex-compatibility.json`, and can become ACTIVE only through explicit promotion. The previous ACTIVE is retained for rollback. Every production Codex invocation re-verifies the ACTIVE fingerprint and records runtime identity evidence.
 
 ```bash
 python3 scripts/codex_runtime.py status
@@ -73,36 +69,19 @@ python3 scripts/codex_runtime.py promote <runtime_id>
 python3 scripts/codex_runtime.py rollback
 ```
 
-Bootstrap promotes the installed Codex only when no ACTIVE runtime exists. It never follows later PATH changes automatically. See `docs/CODEX_EVERGREEN.md`.
-
 ## Native Codex plugin
 
-The repository includes a repo marketplace and `plugins/amazon-ads-operator`, packaging four Codex skills:
-
-- operator status and health;
-- diagnosis and forensic evidence;
-- archive/live acceptance;
-- autonomous in-envelope operation.
-
-The plugin improves the Codex UX but is **not** a second security boundary or raw write path. Privileged Amazon mutations still flow only through the sealed Controller/Executor chain.
-
-Repo marketplace:
-
-```text
-.agents/plugins/marketplace.json
-plugins/amazon-ads-operator/.codex-plugin/plugin.json
-plugins/amazon-ads-operator/skills/...
-```
+The repo includes `.agents/plugins/marketplace.json` and `plugins/amazon-ads-operator` with status, diagnosis, acceptance and autonomy skills. The plugin is the native Codex operator UX, not a parallel privileged mutation path: Amazon writes still go only through the sealed Controller/Executor chain.
 
 ## Owner control
 
-The authenticated Owner Web controls `Autopilot / Observe / Paused`, Emergency Stop, advertiser/profile/ASIN scope, daily total spend ceiling, campaign/new-campaign budgets, bid/budget/placement expansion, cooldowns, creation counts and autonomy families. Policy/operator revisions are immutable and audited; rollback returns to Observe.
+The authenticated Owner Web controls `Autopilot / Observe / Paused`, Emergency Stop, advertiser/profile/ASIN scope, daily spend ceiling, campaign/new-campaign budgets, bid/budget/placement expansion, cooldowns, creation counts and autonomy families. Policy/operator revisions are immutable and audited; revision restore returns to Observe.
 
 Web binds to `127.0.0.1:8765` by default. Prefer SSH tunneling or an explicitly secured TLS reverse proxy.
 
 ## Filesystem isolation
 
-Runtime state and secrets are outside Git:
+Runtime state and secrets live outside Git:
 
 ```text
 ~/.local/share/amazon-ads-codex-owner/
@@ -136,47 +115,43 @@ The system starts in Observe. Configure the real advertiser/profile, timezone/cu
 ```bash
 python3 scripts/preflight.py
 python3 scripts/archive_check.py
-python3 scripts/virtual_acceptance.py --report virtual-acceptance-report.json
+make virtual-acceptance
 python3 scripts/run_cycle.py daily --dry-run
 ```
 
-Only after staged live acceptance should the host be switched to Autopilot and timers installed with `./scripts/install_systemd.sh`.
+Only after staged live acceptance should the host enter Autopilot and enable timers with `./scripts/install_systemd.sh`.
 
-## Full virtual-stack acceptance
+## Ten-scenario full virtual-stack acceptance
 
-The source gate includes a fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` job. It creates an isolated virtual environment, installs the fully pinned archive toolchain, builds the wheel twice with a commit-derived `SOURCE_DATE_EPOCH` and requires byte identity, installs the sealed wheel, then drives the real Controller, Owner DB, runtime DB, Codex runtime registry, frozen PreToolUse Hook, one-use grants, verifier, recovery logic and Linux process lock against a credential-free virtual Codex/Amazon boundary.
+The fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` gate creates an isolated venv, installs the fully pinned archive toolchain, double-builds the wheel with commit-derived `SOURCE_DATE_EPOCH` and requires byte identity, installs that wheel, then runs two cooperating harnesses.
 
-The eight required scenarios cover fresh bootstrap/preflight, Observe no-write behavior, a complete sealed mutation and independent verification, Codex candidate promotion/rollback, backup/restore, transport failure after a write, crash after grant consumption before a write, restart reconciliation, final-boundary Emergency Stop and overlapping-cycle rejection.
+The control-plane harness proves eight scenarios: fresh bootstrap/preflight; Observe no-write; complete sealed mutation and independent verification; Codex candidate promotion/rollback; backup/restore; after-write transport ambiguity reconciled without replay; consumed-grant/pre-write crash and restart uncertainty with no replay; and final-boundary Emergency Stop plus Linux `flock` overlap rejection.
 
-This proves the control-plane mechanics without real credentials. It deliberately does **not** claim to prove a particular Amazon profile, authenticated live MCP schema or real-money mutation semantics.
+The production-surface harness adds two more scenarios. It launches the real `scripts/run_web.py` on loopback and exercises static UI/security headers/readiness, unauthenticated denial, password login, CSRF rejection/enforcement, policy revision, revision restore, Autopilot and Emergency Stop. It also runs the real `scripts/install_systemd.sh` rendering path inside an isolated HOME and verifies all rendered units with no unresolved placeholders plus `systemd-analyze verify` when available.
 
-## Update / rollback behavior
+`ADS_SYSTEMD_RENDER_ONLY=1` is a certification-only switch that exits **after** exact production template rendering and **before** any `systemctl` call; normal production installation behavior is unchanged.
 
-A normal Codex update must never be treated as a production promotion. Register and probe the candidate first. After promotion, run preflight plus Observe/dry-run and live read checks. If a host-specific regression appears, `python3 scripts/codex_runtime.py rollback` restores the previous certified runtime without changing Owner policy.
-
-GitHub also runs `.github/workflows/codex-evergreen.yml` daily against the current official Codex to surface capability drift before it reaches a host.
-
-## Repository and release seal
-
-This repository intentionally keeps **one branch: `main`**. `single-main-branch` removes non-main branches after main pushes.
-
-Every main push runs the Python 3.11/3.12 archive matrix, complete-history privacy scanning and the isolated Ubuntu 24.04 Python-3.12 virtual full-stack gate. GitHub Actions and the archive/build toolchain are exact-version/SHA pinned.
-
-A successful exact main SHA is automatically processed by `sealed-release`. Wheel and source archive artifacts are built twice and must be byte-identical before publication. `RELEASE_IDENTITY.json` binds the exact commit, certified Amazon contract, Codex compatibility contract, archive-tooling hash and reproducibility epoch; `SHA256SUMS` covers published subjects. v0.5.2+ release subjects also receive GitHub Artifact Attestations backed by Sigstore, and `.github/workflows/sealed-integrity.yml` periodically re-downloads releases to verify checksums, tag/identity binding and attestations.
-
-A previously sealed version cannot be silently reused for a different main SHA by the release workflow; changed source requires a version bump. Repository-level branch/ruleset protection remains a GitHub account setting rather than a source-tree control.
+This virtual stack substitutes only the external Amazon/Codex network boundary and actual host service activation. The Controller, Owner/runtime databases, policy/ledger, runtime registry, frozen Hook, grants, verifier, recovery logic, Owner Web server and systemd rendering logic are the production implementations.
 
 ## Backup / recovery
 
 ```bash
 python3 scripts/backup_owner.py
-python3 scripts/restore_owner.py /path/to/backup --owner-home /path/to/owner-home
+python3 scripts/restore_owner.py /path/to/backup --owner-home /path/to/new-owner-home
 ```
 
-Backup manifest v2 preserves consistent Owner/runtime SQLite snapshots, both signing domains, deterministic production Codex config/Hook, the Codex runtime registry and all content-addressed runtime slots referenced by ACTIVE/PREVIOUS/candidates. OAuth stores are deliberately not copied.
+Backup manifest v2 preserves consistent Owner/runtime SQLite snapshots, both signing domains, deterministic production Codex config/Hook, the Codex runtime registry and content-addressed slots referenced by ACTIVE/PREVIOUS/candidates. OAuth stores are intentionally excluded.
 
-Restore clears stale OAuth/auth, grant, workspace/run, prior runtime-slot/registry, lock and SQLite-sidecar state before reconstruction; it verifies checksums, runtime fingerprints, SQLite integrity and the signed Owner audit chain. A restored host always starts in Observe and must re-bind Amazon MCP, pass preflight and dry-run before returning to Autopilot.
+Restore clears stale OAuth/auth, grants, workspaces/runs, prior runtime slots/registry, locks and SQLite sidecars before reconstruction; it verifies checksums, runtime fingerprints, SQLite integrity and the Owner audit chain. A restored host returns to Observe and must re-bind Amazon MCP, pass preflight and dry-run before Autopilot.
+
+## Repository / release seal
+
+The repo intentionally retains one branch: `main`. Every main push runs the Python 3.11/3.12 archive matrix, complete-history privacy scan and Python-3.12 ten-scenario virtual full stack. GitHub Actions and archive/build tooling are exact-version/SHA pinned.
+
+A successful exact main SHA is processed by `sealed-release`. Wheel and source archive are each built twice and must be byte-identical. `RELEASE_IDENTITY.json` binds the commit, certified Amazon contract, Codex compatibility contract, archive-tooling hash and reproducibility epoch; `SHA256SUMS` covers published subjects. v0.5.2+ release subjects receive GitHub Artifact Attestations backed by Sigstore, and `sealed-release-integrity` periodically re-downloads releases to verify checksums, tag/identity binding and attestations.
+
+Changed source requires a new version; the release workflow refuses to reuse a sealed version for another SHA. Repository-level branch protection/rulesets remain a GitHub account setting rather than a source-tree control, so the project claims exact identity/tamper evidence/provenance rather than pretending an administrator cannot rewrite refs.
 
 ## Claim boundary
 
-Source/archive sealing and real-account production acceptance are separate. GitHub CI and the virtual Amazon harness cannot prove OAuth, a particular advertiser/profile binding, the current authenticated Amazon MCP schemas, Amazon-side timing/429 behavior or real-money semantics. Follow `docs/ARCHIVE_ACCEPTANCE.md` before calling a specific Ubuntu + Amazon account deployment production-accepted.
+Source/archive sealing and real-account production acceptance are separate. Credential-free CI cannot prove a particular advertiser/profile, OAuth session, current authenticated Amazon MCP schemas, Amazon-side timing/429 behavior or real-money mutation semantics. Follow `docs/ARCHIVE_ACCEPTANCE.md` before calling a specific Ubuntu + Amazon account deployment production-accepted.
