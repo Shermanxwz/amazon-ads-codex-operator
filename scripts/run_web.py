@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
-from ads_autopilot.web_server import build_server
+from ads_autopilot.override_web_server import build_server
 
 server=build_server(ROOT)
 host,port=server.server_address[:2]

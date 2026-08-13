@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.1 — Owner Direct Override seal
+
+- Added authenticated Owner Direct Override windows for 30 minutes, 1 hour, 2 hours and permanent-until-cleared authorization.
+- Added a `direct` execution cycle that can consume an already armed Owner window and bind one natural-language Owner instruction to temporary full Sponsored Products advertising authority.
+- Kept arming outside model control: Codex can consume an armed window but cannot create or extend one itself.
+- Lifted routine autonomy toggles, money/bid/placement caps, cooldowns, creation quotas, naming/PAUSED-first rules, managed-ASIN filters, routine confidence thresholds and routine irreversible-ad restrictions only while a direct command is actively bound.
+- Preserved advertiser/profile identity, Sponsored Products scope, Emergency Stop, exact sealed MCP binding, fresh pre-write state, one-use Executor grants, independent verification, crash ambiguity handling and the Owner audit chain.
+- Kept billing/payment, credentials/OAuth, user management, account administration and account deletion outside Owner Direct Override.
+- Added policy-revision invalidation on arm/command/finish/clear/expiry and capped direct Executor grant lifetime to the authorization window.
+- Added Control Plane duration controls, countdown/status, explicit clear behavior, direct-command documentation and direct-override unit/web/grant tests.
+
 ## 0.6.0 — Sponsored Products optimization-intelligence seal
 
 - Added a dedicated read-only Sponsored Products research pass before each autonomous cycle so fresh normalized performance evidence is persisted before strategy selection.

@@ -1,14 +1,14 @@
 {
   "name": "amazon-ads-operator",
-  "version": "0.6.0",
-  "description": "Owner-controlled Amazon Ads autonomous operations, optimization intelligence and diagnostics for Codex.",
+  "version": "0.6.1",
+  "description": "Owner-controlled Amazon Ads autonomous operations, optimization intelligence and direct-override diagnostics for Codex.",
   "repository": "https://github.com/Shermanxwz/amazon-ads-codex-operator",
-  "keywords": ["amazon-ads", "sponsored-products", "codex", "autonomy", "optimization"],
+  "keywords": ["amazon-ads", "sponsored-products", "codex", "autonomy", "optimization", "owner-direct-override"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Amazon Ads Operator",
     "shortDescription": "Operate, learn and optimize the sealed Amazon Ads control plane",
-    "longDescription": "Codex-native skills for status, diagnosis, acceptance and autonomous Sponsored Products operations with persistent optimization intelligence while Owner policy remains the authority boundary.",
+    "longDescription": "Codex-native skills for status, diagnosis, acceptance, autonomous Sponsored Products optimization and explicitly Owner-armed direct operations while Owner Control remains the authority boundary.",
     "developerName": "Shermanxwz",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],
@@ -16,6 +16,7 @@
       "Show the Amazon Ads operator status and explain anything unhealthy.",
       "Diagnose the last Amazon Ads autonomous cycle without weakening Owner limits.",
       "Check the Sponsored Products optimization-learning report and identify the best marginal-profit opportunities.",
+      "Check whether Owner Direct Override is armed before attempting my exceptional ad operation.",
       "Check whether this host is ready for live Amazon Ads acceptance."
     ]
   }
