@@ -1,0 +1,7 @@
+setuptools==84.0.0
+wheel==0.48.0
+pytest==9.1.1
+packaging==26.3
+iniconfig==2.3.0
+pluggy==1.6.0
+pygments==2.20.0

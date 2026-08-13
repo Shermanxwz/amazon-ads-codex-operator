@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Compare certified Amazon Ads Postman tree with upstream main
@@ -50,11 +50,11 @@ jobs:
           echo "upstream_postman_tree=$latest_tree"
 
           if [[ "$latest_tree" != "$certified_tree" ]]; then
-            echo "Amazon Ads Postman contract drift detected. Review the upstream postman/ changes before changing the certified pin." >&2
+            echo "Amazon Ads Postman contract drift detected. Review upstream postman/ before changing the certified pin." >&2
             exit 3
           fi
           if [[ "$latest" != "$certified" ]]; then
-            echo "Upstream repository moved, but the postman/ contract tree is unchanged. No contract drift."
+            echo "Upstream repository moved, but postman/ contract tree is unchanged."
           else
             echo "Certified Amazon Ads Postman contract matches upstream main."
           fi

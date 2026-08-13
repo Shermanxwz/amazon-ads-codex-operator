@@ -1,38 +1,37 @@
 # Changelog
 
+## 0.5.2 — Reproducibility / provenance maintenance seal
+
+- Made the Owner-owned signing-key file the canonical production signing identity; ambient environment variables can no longer override it.
+- Bounded certified Python support to 3.11/3.12 and moved Ubuntu 24.04 full-stack/release certification to Python 3.12.
+- Upgraded GitHub Actions to current Node-24-era checkout/setup-python releases while retaining exact commit-SHA pinning.
+- Fully pinned archive/test/build tooling, including pytest transitive dependencies, in `config/archive-tooling.txt` and pinned the PEP 517 setuptools backend.
+- Added complete Git-history privacy scanning for forbidden runtime/auth filenames and credential/token patterns.
+- Added deterministic `SOURCE_DATE_EPOCH` plus byte-for-byte double-build checks for wheels and release source archives.
+- Added release-tooling identity to `RELEASE_IDENTITY.json`.
+- Added exact-SHA GitHub/Sigstore artifact provenance attestations for release subjects.
+- Added scheduled release-integrity verification for checksums, tag/identity binding and v0.5.2+ attestations.
+- Ignored local virtual-acceptance build artifacts so certification runs keep the checkout clean.
+
 ## 0.5.1 — Final acceptance / disaster-recovery seal
 
-- Domain-separated Executor grant signing from the Owner master key; the frozen hook now receives only the derived grant-verification secret and cannot use it to forge Owner audit/action signatures.
-- Added a full credential-free virtual production acceptance that runs the real Controller against a self-contained fake Codex runtime and persistent virtual Amazon state, including the actual frozen PreToolUse hook.
-- The virtual acceptance covers bootstrap/preflight, Observe no-write behavior, sealed one-action execution, fresh prewrite state, exact grant consumption, independent verification, Codex candidate promotion/rollback, transport failure after write, crash after grant consumption before write, restart reconciliation, Emergency Stop at the final tool boundary and the Linux single-instance lock.
-- Added a dedicated fresh Ubuntu 24.04 `virtual-full-stack` GitHub Actions job using an isolated Python virtual environment and an installed wheel before exercising the production checkout/scripts.
-- Upgraded backup manifests to v2 and preserved content-addressed Codex ACTIVE/PREVIOUS/candidate runtime slots plus the registry, with SHA-256 verification and path rebinding on restore.
-- Hardened restore so stale OAuth/auth state, grants, disposable workspaces, run artifacts, prior Codex runtime registry/slots, lock files and SQLite sidecars cannot survive an in-place disaster recovery.
-- Kept v1 backup verification compatibility and retained the rule that every restored host returns to Observe before real Amazon re-binding.
-- Made archive version consistency dynamic across package, runtime, plugin and release notes instead of embedding one release number in the gate.
+- Domain-separated Executor grant signing from the Owner master key; the frozen hook receives only the derived grant-verification secret.
+- Added a fresh Ubuntu 24.04 full virtual production acceptance covering bootstrap/preflight, Observe, sealed execution, real frozen Hook, verification, upgrade/rollback, ambiguous-write recovery, restart, Emergency Stop and process locking.
+- Upgraded backup manifests to v2 and preserved content-addressed ACTIVE/PREVIOUS/candidate Codex runtime slots plus registry with SHA-256 verification and path rebinding on restore.
+- Hardened restore to clear stale OAuth/auth, grants, disposable workspaces, run artifacts, old runtime slots/registry, lock files and SQLite sidecars.
+- Made archive release-version consistency dynamic across package, runtime, plugin and release notes.
 
 ## 0.5.0 — Codex Evergreen / native integration
 
-- Decoupled production execution from Linux PATH. The controller now selects an Owner-pinned ACTIVE Codex runtime and verifies its SHA-256 fingerprint before every invocation.
-- Added a content-addressed Codex runtime registry with candidate registration, capability probe, explicit atomic promotion and rollback to the previous ACTIVE runtime.
-- Bootstrap adopts Codex only when no ACTIVE exists; later system `codex` updates cannot silently replace production.
-- `install_codex_ubuntu.sh` registers updates as candidates instead of promoting them; Amazon MCP setup uses ACTIVE Codex.
-- Expanded the capability contract from a flag list to stable command surfaces plus strict-config smoke testing. Experimental App Server/remote/cloud surfaces are not production dependencies.
-- Added daily Ubuntu latest-Codex compatibility CI as an early-warning drift detector.
-- Added a repo-scoped `amazon-ads-operator` Codex plugin with status, diagnosis, acceptance and autonomy skills. The plugin is UX/instructions only; privileged writes remain behind the sealed control plane.
-- Added automatic green-main release sealing and immutable version/tag identity.
-- Added single-main-branch enforcement so GitHub retains only `main`.
-- Preserved broad AI decision freedom inside Owner scope and monetary limits; no routine per-action approval was introduced.
+- Decoupled production execution from Linux PATH and introduced Owner-pinned ACTIVE Codex runtime identities with candidate probe, atomic promotion and rollback.
+- Added daily latest-Codex compatibility CI and repo-native Amazon Ads Operator plugin/skills.
+- Added automatic green-main release sealing and single-main-branch enforcement.
+- Preserved broad AI decision freedom inside Owner scope and monetary limits.
 
 ## 0.4.0 — Archive hardening / crash-safe sealed execution
 
-- Preserved full-managed AI autonomy inside the Owner-defined scope and monetary envelope; no per-action human approval workflow was introduced.
-- Upgraded Executor grants to deterministic v2 one-use capability tickets with atomic replay protection.
-- Added final-boundary Owner authority checks, fresh pre-write state validation, crash/restart reconciliation and independent fresh-state verification.
-- Added direct production-hook tests, Codex capability checks, immutable Amazon contract pinning, verified backup/restore, pinned CI and sealed release artifacts.
+- Added one-use grant replay protection, final-boundary Owner checks, fresh pre-write state validation, crash/restart reconciliation, direct production-hook tests, immutable Amazon contract pinning and verified backup/restore.
 
 ## 0.3.0 — Owner Control / sealed execution
 
-- Added Owner Web as the highest operational authority layer with authenticated mode, scope, monetary limits, emergency stop, immutable revisions and rollback-to-Observe.
-- Moved Owner policy, runtime DB, signing key, production Codex home, grants, workspaces and run evidence outside the Git checkout.
-- Added HMAC-signed audit history, one-action execution, exact MCP tool/argument grants, budget reservations, cooldowns, recovery breaker and two-phase PAUSED campaign activation.
+- Added Owner Web/DB authority, signed audit history, exact one-action execution, budget reservations, cooldowns, recovery breaker and PAUSED-first campaign creation lifecycle.

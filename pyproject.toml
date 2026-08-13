@@ -1,16 +1,16 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "amazon-ads-codex-operator"
-version = "0.5.1"
+version = "0.5.2"
 description = "Owner-controlled Codex Evergreen autonomous Amazon Ads control plane"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest==9.1.1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

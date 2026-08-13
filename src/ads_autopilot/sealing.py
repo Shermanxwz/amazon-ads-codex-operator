@@ -20,11 +20,7 @@ def _is_executor_grant(value: Any) -> bool:
 
 
 def executor_grant_signing_key(master_key: bytes) -> bytes:
-    """Derive the hook-visible Executor grant key from the Owner master key.
-
-    The frozen hook receives only this derived key. It can validate one-use grants
-    but cannot forge Owner audit entries or normal sealed-action signatures.
-    """
+    """Derive the hook-visible Executor grant key from the Owner master key."""
     if len(master_key) < 32:
         raise ValueError("master signing key must contain at least 32 bytes")
     return hmac.new(master_key, _GRANT_KDF_CONTEXT, hashlib.sha256).hexdigest().encode()
@@ -38,9 +34,9 @@ class Sealer:
 
     @classmethod
     def from_path(cls, path: str | Path):
-        env = os.environ.get("ADS_OPERATOR_SIGNING_KEY")
-        if env:
-            return cls(env.encode())
+        # Production signing identity is the Owner-owned file, full stop. An
+        # ambient environment variable must never be able to make runtime
+        # signatures diverge from the key that backup/restore preserves.
         p = Path(path)
         if not p.exists():
             raise RuntimeError("signing key missing; run scripts/bootstrap.py")
@@ -51,6 +47,9 @@ class Sealer:
         return cls.from_path(Path(root) / ".secrets" / "operator_signing_key")
 
     def sign(self, value: Any) -> str:
+        # v2 capability grants occupy a separate cryptographic domain. The
+        # dispatch is deterministic and behavior-tested; all other values use
+        # the Owner/action master domain.
         key = executor_grant_signing_key(self.key) if _is_executor_grant(value) else self.key
         return hmac.new(key, canonical_json(value).encode(), hashlib.sha256).hexdigest()
 

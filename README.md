@@ -2,7 +2,7 @@
 
 A Codex-native **Owner-controlled autonomous Amazon Ads control plane** for Ubuntu, built for long-running unattended Sponsored Products optimization with a hard separation between **AI reasoning freedom** and **Owner authority**.
 
-> Release line: **v0.5.x — Codex Evergreen / archive-sealed native operator.** AI autonomy is not reduced. The Evergreen layer prevents future Codex updates from silently replacing the production runtime; v0.5.1 adds full virtual-stack acceptance, grant-key domain separation and complete Codex-runtime disaster recovery.
+> Release line: **v0.5.x — Codex Evergreen / archive-sealed native operator.** AI autonomy is not reduced. v0.5.1 sealed the complete virtual execution/recovery path; v0.5.2 adds deterministic rebuilds, complete-history privacy checks, canonical key identity and GitHub/Sigstore release provenance.
 
 ## Core rule
 
@@ -46,7 +46,7 @@ Independent Verifier Codex ──► fresh Amazon state
         └── ambiguous/crash → reconcile, never blind replay
 ```
 
-The Owner/action master signing key is not given to the frozen Hook. Executor v2 grants are signed with a deterministic domain-separated key stored separately under Owner Home, so Hook grant verification cannot forge Owner audit history or ordinary sealed-action signatures.
+The Owner/action master signing key is not given to the frozen Hook. Executor v2 grants are signed with a deterministic domain-separated key stored separately under Owner Home, so Hook grant verification cannot forge Owner audit history or ordinary sealed-action signatures. The Owner-owned master key file is the canonical signing identity; ambient environment variables cannot replace it.
 
 ## Codex Evergreen
 
@@ -144,9 +144,9 @@ Only after staged live acceptance should the host be switched to Autopilot and t
 
 ## Full virtual-stack acceptance
 
-The source gate includes a fresh Ubuntu 24.04 `virtual-full-stack` job. It creates an isolated Python virtual environment, builds/installs the wheel, then drives the real Controller, Owner DB, runtime DB, Codex runtime registry, frozen PreToolUse Hook, one-use grants, verifier, recovery logic and Linux process lock against a credential-free virtual Codex/Amazon boundary.
+The source gate includes a fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` job. It creates an isolated virtual environment, installs the fully pinned archive toolchain, builds the wheel twice with a commit-derived `SOURCE_DATE_EPOCH` and requires byte identity, installs the sealed wheel, then drives the real Controller, Owner DB, runtime DB, Codex runtime registry, frozen PreToolUse Hook, one-use grants, verifier, recovery logic and Linux process lock against a credential-free virtual Codex/Amazon boundary.
 
-The scenarios cover fresh bootstrap/preflight, Observe no-write behavior, a complete sealed mutation and independent verification, Codex candidate promotion/rollback, backup/restore, transport failure after a write, crash after grant consumption before a write, restart reconciliation, final-boundary Emergency Stop and overlapping-cycle rejection.
+The eight required scenarios cover fresh bootstrap/preflight, Observe no-write behavior, a complete sealed mutation and independent verification, Codex candidate promotion/rollback, backup/restore, transport failure after a write, crash after grant consumption before a write, restart reconciliation, final-boundary Emergency Stop and overlapping-cycle rejection.
 
 This proves the control-plane mechanics without real credentials. It deliberately does **not** claim to prove a particular Amazon profile, authenticated live MCP schema or real-money mutation semantics.
 
@@ -160,7 +160,11 @@ GitHub also runs `.github/workflows/codex-evergreen.yml` daily against the curre
 
 This repository intentionally keeps **one branch: `main`**. `single-main-branch` removes non-main branches after main pushes.
 
-Every main push runs the Python 3.11/3.12 archive gate plus the isolated Ubuntu virtual full-stack gate. A successful exact main SHA is automatically sealed by `sealed-release`: the version tag is created at that green SHA and the release publishes wheel/source artifacts, `RELEASE_IDENTITY.json` and SHA-256 checksums. A version tag cannot silently move to a later commit; changing sealed source requires a version bump.
+Every main push runs the Python 3.11/3.12 archive matrix, complete-history privacy scanning and the isolated Ubuntu 24.04 Python-3.12 virtual full-stack gate. GitHub Actions and the archive/build toolchain are exact-version/SHA pinned.
+
+A successful exact main SHA is automatically processed by `sealed-release`. Wheel and source archive artifacts are built twice and must be byte-identical before publication. `RELEASE_IDENTITY.json` binds the exact commit, certified Amazon contract, Codex compatibility contract, archive-tooling hash and reproducibility epoch; `SHA256SUMS` covers published subjects. v0.5.2+ release subjects also receive GitHub Artifact Attestations backed by Sigstore, and `.github/workflows/sealed-integrity.yml` periodically re-downloads releases to verify checksums, tag/identity binding and attestations.
+
+A previously sealed version cannot be silently reused for a different main SHA by the release workflow; changed source requires a version bump. Repository-level branch/ruleset protection remains a GitHub account setting rather than a source-tree control.
 
 ## Backup / recovery
 

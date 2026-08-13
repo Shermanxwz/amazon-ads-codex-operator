@@ -9,20 +9,23 @@ Security controls protect the Owner envelope and execution correctness **without
 1. AI cannot edit or expand Owner authority.
 2. Owner/action signing material and the derived Executor-grant key are never forwarded in the model environment or copied into disposable workspaces.
 3. The frozen PreToolUse hook receives only the derived Executor-grant key; it does not possess the Owner master signing key used for audit history and normal sealed-action signatures.
-4. Billing, payment, account-admin, credential/user-management and permanent-delete operations are hard-blocked in code.
-5. No live mutation is released without deterministic policy acceptance and HMAC sealing.
-6. Atomic Executor receives one exact Amazon MCP tool and one exact argument object.
-7. Every Executor grant is a one-use capability: the production PreToolUse hook atomically consumes it before returning `allow`; the same grant cannot authorize a replay.
-8. At the final tool boundary, the hook re-reads Owner Autopilot mode, Emergency Stop, Policy revision and Operator revision. A stale authority snapshot cannot authorize a new mutation.
-9. Existing-entity mutations receive a fresh Amazon state check before release. A stale sealed `before` state is cancelled/replanned rather than written over newer state.
-10. A consumed or otherwise ambiguous mutation is never blindly replayed after transport/process/host failure. Fresh Amazon state is used to reconcile the intended `after` state; unresolved exposure remains uncertain and pauses the system.
-11. Independent fresh read verification is required before normal completion.
-12. Owner Emergency Stop never auto-clears.
-13. Codex JSONL event streams are retained per invocation for forensic reconstruction, but event logs never grant authority.
+4. The Owner master signing identity is the Owner-owned key file under `ADS_OWNER_HOME`; ambient process environment cannot override that identity.
+5. Billing, payment, account-admin, credential/user-management and permanent-delete operations are hard-blocked in code.
+6. No live mutation is released without deterministic policy acceptance and HMAC sealing.
+7. Atomic Executor receives one exact Amazon MCP tool and one exact argument object.
+8. Every Executor grant is a one-use capability: the production PreToolUse hook atomically consumes it before returning `allow`; the same grant cannot authorize a replay.
+9. At the final tool boundary, the hook re-reads Owner Autopilot mode, Emergency Stop, Policy revision and Operator revision. A stale authority snapshot cannot authorize a new mutation.
+10. Existing-entity mutations receive a fresh Amazon state check before release. A stale sealed `before` state is cancelled/replanned rather than written over newer state.
+11. A consumed or otherwise ambiguous mutation is never blindly replayed after transport/process/host failure. Fresh Amazon state is used to reconcile the intended `after` state; unresolved exposure remains uncertain and pauses the system.
+12. Independent fresh read verification is required before normal completion.
+13. Owner Emergency Stop never auto-clears.
+14. Codex JSONL event streams are retained per invocation for forensic reconstruction, but event logs never grant authority.
 
 ## Signing-key separation
 
-`secrets/operator_signing_key` is the Owner/controller master used for signed Owner audit history and normal sealed-action signatures. `secrets/executor_grant_signing_key` is deterministically domain-separated from that master and is the **only** HMAC secret available to the frozen hook. Executor grants are recognized by their v2 capability shape and are signed with the derived key; ordinary sealed actions remain signed with the Owner master key.
+`secrets/operator_signing_key` is the canonical Owner/controller master used for signed Owner audit history and normal sealed-action signatures. `Sealer.from_path()` reads that file directly; a stale or injected `ADS_OPERATOR_SIGNING_KEY` environment value cannot cause runtime signatures to diverge from backup/restore identity.
+
+`secrets/executor_grant_signing_key` is deterministically domain-separated from that master and is the **only** HMAC secret available to the frozen hook. Executor grants are recognized by their v2 capability shape and are signed with the derived key; ordinary sealed actions remain signed with the Owner master key.
 
 This means a defect isolated to the hook's grant-verification secret cannot be used to forge the Owner audit chain or ordinary sealed-action signatures. Bootstrap and preflight verify that the derived key matches the current Owner master and is stored mode `0600`.
 
@@ -88,10 +91,16 @@ Verified v2 backups contain the Owner master signing key, derived Executor-grant
 
 OAuth/auth stores are intentionally excluded. Restore clears stale OAuth/auth state, grants, disposable workspaces, run artifacts, prior runtime slots/registry, lock files and SQLite sidecars before reconstitution; then it verifies manifest hashes, runtime fingerprints, SQLite integrity and the Owner signed audit chain and returns the recovered runtime to Observe until OAuth and current Amazon state are re-established.
 
-## Virtual acceptance
+## Virtual acceptance / build provenance
 
-The fresh-Ubuntu `virtual-full-stack` CI path exercises the real Controller, Owner databases, Codex runtime registry, frozen hook, one-use grants, verification, recovery, Emergency Stop and process lock against a credential-free virtual Amazon state. It is a source/control-plane proof, not a substitute for authenticated live Amazon acceptance.
+The fresh-Ubuntu `virtual-full-stack` CI path exercises the real Controller, Owner databases, Codex runtime registry, frozen hook, one-use grants, verification, recovery, Emergency Stop and process lock against a credential-free virtual Amazon state. It uses the certified Python/toolchain, builds the wheel twice with commit-derived `SOURCE_DATE_EPOCH` and requires byte identity before the wheel is installed and exercised.
 
-## GitHub
+The release workflow repeats the archive gate, double-builds both wheel and source archive, binds their hashes to `RELEASE_IDENTITY.json`, and v0.5.2+ subjects receive GitHub Artifact Attestations backed by Sigstore. A scheduled integrity workflow re-downloads releases and verifies checksums, tag/identity binding and those attestations.
+
+These mechanisms provide reproducibility, provenance and tamper evidence. They do not make a GitHub repository administrator cryptographically unable to rewrite refs; repository branch/ruleset protection is an account-level control outside this source tree.
+
+## GitHub / privacy
+
+The archive gate scans both the current source tree and complete Git history for forbidden runtime/auth/key/database filenames and known credential/token patterns. CI uses a full-history checkout for this purpose.
 
 The repository contains sanitized source/examples only. Before storing any account-specific operational documentation in Git, make the repository Private. Even a private repository should never contain OAuth refresh/access tokens, Codex auth state, signing keys, cookies or Owner/runtime databases.

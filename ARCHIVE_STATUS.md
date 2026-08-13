@@ -1,40 +1,46 @@
-# v0.5.1 archive status
+# v0.5.2 archive status
 
-Status policy: **GREEN MAIN + FULL VIRTUAL STACK AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
+Status policy: **GREEN MAIN + FULL VIRTUAL STACK + REPRODUCIBLE BUILD + PROVENANCE AUTO-SEALS / REAL-ACCOUNT LIVE ACCEPTANCE REMAINS HOST-SPECIFIC**
 
-v0.5.1 makes the source seal depend on both static/unit evidence and a complete credential-free production-path simulation. The exact `main` SHA must pass `archive-gate` on Ubuntu 24.04 for Python 3.11 and 3.12 **and** the independent `virtual-full-stack` job. Only then may `sealed-release` create the version tag at that same SHA and publish wheel/source artifacts, `RELEASE_IDENTITY.json` and SHA-256 checksums.
+v0.5.2 requires the exact `main` SHA to pass the archive matrix on Ubuntu 24.04 for Python 3.11 and 3.12, the independent Python-3.12 `virtual-full-stack`, complete-history privacy checks and byte-reproducible artifact checks. Only then may `sealed-release` create `v0.5.2` at that SHA, create GitHub/Sigstore provenance attestations and publish checksummed release assets.
 
-## Signing-key separation seal
+## Execution / recovery seal
 
-The Owner/action master signing key and the hook-visible Executor-grant key are now domain-separated. Bootstrap derives the grant-only key, preflight verifies it, the controller signs v2 grants through the derived domain, and the frozen hook reads only that derived secret. Owner audit/action signing remains on the master key.
+The v0.5.1 trust boundary remains intact: Owner/action master signing and hook-visible Executor-grant signing are domain-separated; one-use grants are atomically consumed; final-boundary Owner mode/Emergency Stop/revision checks remain in the frozen Hook; fresh pre-write state blocks stale intent; ambiguous or crash-surviving writes are reconciled from fresh external state and are never blindly replayed; ACTIVE/PREVIOUS Codex runtimes are content-addressed, fingerprinted, backed up and restored.
+
+The production master signing identity is now canonical to `ADS_OWNER_HOME/secrets/operator_signing_key`. Ambient process environment cannot override that identity, preventing runtime signatures from diverging from the key archived by backup/restore.
 
 ## Full virtual-stack seal
 
-The virtual acceptance uses a self-contained fake Codex executable and persistent virtual Amazon state, but runs the real production Controller, RuntimePaths, OwnerStore, SQLite ledger/state, Codex Evergreen registry, frozen PreToolUse hook, grant files, runner isolation, verification and recovery logic. It covers:
+The credential-free virtual acceptance continues to drive the real Controller, RuntimePaths, OwnerStore, SQLite ledger/state, Codex Evergreen registry, frozen PreToolUse Hook, one-use grants, runner isolation, verifier, recovery and Linux `flock`. Its eight required scenarios are:
 
-- fresh bootstrap, capability probe, ACTIVE snapshot and preflight;
-- Observe planning/sealing with zero external mutation;
-- Autopilot planner → policy → fresh prewrite → one-use grant → frozen hook → mutation → independent verifier;
-- candidate promotion and rollback;
-- backup/restore of Owner state plus ACTIVE/PREVIOUS Codex runtime identity;
-- transport failure after a successful write, reconciled from fresh external state with no replay;
-- crash after grant consumption but before a write, retained as uncertain and never blindly replayed;
-- restart reconciliation and automatic pause;
-- Emergency Stop applied while Executor waits immediately before the hook boundary;
-- rejection of a concurrent overlapping cycle by the Linux `flock` single-instance lock.
+- fresh bootstrap + preflight;
+- Observe with no write;
+- sealed live happy path;
+- Evergreen candidate promotion + rollback;
+- backup/restore preserving ACTIVE runtime identity;
+- successful write followed by ambiguous transport, recovered without replay;
+- grant consumed before write, then restart/uncertainty with no replay;
+- final-boundary Emergency Stop plus concurrent-cycle `flock` rejection.
 
-## Disaster-recovery seal
+## Reproducibility / supply-chain seal
 
-Backup manifest v2 includes Owner/runtime SQLite, signing key, production Codex config/hook and the content-addressed Codex runtime registry/slots needed to restore ACTIVE and PREVIOUS identities. Restore verifies hashes, rewrites runtime slot paths to the target Owner Home, clears stale OAuth/auth state, grants, prior runtime slots, disposable workspaces, run artifacts, lock files and SQLite sidecars, validates SQLite/audit/runtime integrity, and always returns Owner mode to Observe.
+- certified Python range is exactly 3.11/3.12;
+- Ubuntu 24.04 full-stack and sealed release use Python 3.12;
+- build/test tooling and pytest transitives are exactly pinned in `config/archive-tooling.txt`;
+- GitHub Actions use Node-24-era checkout/setup-python releases pinned to immutable commit SHAs;
+- checkout uses complete history for the archive privacy gate;
+- current tree **and full Git history** are scanned for forbidden Owner/auth/key/database filenames and known credential/token patterns;
+- wheel builds use commit-derived `SOURCE_DATE_EPOCH` and must be byte-identical across two independent build directories;
+- release source archives are also built twice and must be byte-identical;
+- `RELEASE_IDENTITY.json` records commit, contract/tooling hashes, reproducibility mode and source-date epoch.
 
-## Codex Evergreen / native integration seal
+## Provenance / post-release integrity seal
 
-Production still selects an Owner-pinned ACTIVE Codex runtime instead of following PATH; fingerprints are checked before use and recorded per invocation. New Codex versions remain candidates until capability-probed and explicitly promoted, with PREVIOUS retained for rollback. The repo continues to expose the native `amazon-ads-operator` plugin/skills without creating another privileged Amazon mutation path.
+v0.5.2 release subjects are attested with GitHub Artifact Attestations backed by Sigstore. A scheduled `sealed-release-integrity` job re-downloads every published sealed release, checks `SHA256SUMS`, verifies `RELEASE_IDENTITY` against the Git tag, and requires GitHub attestation verification for v0.5.2 and later.
 
-## Repository and authority seal
-
-The GitHub repository policy remains one branch: `main`. v0.5.1 does **not** reduce AI business autonomy: Codex remains free to optimize inside Owner-defined Sponsored Products scope and monetary limits; hardening constrains authorization mechanics, runtime replacement and recovery rather than routine business choices.
+The repository still intentionally retains only one branch, `main`. Repository-level branch protection/rulesets are a GitHub account setting rather than a source-tree control; the connected GitHub tool available to this project does not expose a write operation for that setting. The source therefore provides tamper evidence, exact release identity and continuous verification, but does not claim that a repository administrator is cryptographically unable to rewrite Git refs.
 
 ## Claim boundary
 
-The virtual Amazon boundary is intentionally credential-free. It proves deterministic control-plane mechanics but cannot certify Amazon OAuth, a particular advertiser/profile, the current authenticated live MCP schema, Amazon-side timing/429 behavior or a real-money mutation. Those host/account-specific checks remain mandatory per `docs/ARCHIVE_ACCEPTANCE.md` before a specific Ubuntu host + Amazon account is called production-accepted.
+This is the strongest truthful **source/archive + complete credential-free virtual-production seal** the repository can provide. It still cannot prove a particular Amazon advertiser/profile, OAuth session, the current authenticated Amazon MCP schema, Amazon-side throttling/timing or real-money mutation semantics. Those checks remain mandatory per `docs/ARCHIVE_ACCEPTANCE.md` before a specific Ubuntu host + Amazon account is described as production-accepted.

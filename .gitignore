@@ -16,7 +16,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+.acceptance-venv/
 dist/
+virtual-dist/
+virtual-acceptance-report.json
 build/
 *.egg-info/
 vendor/amazon-postman/postman/

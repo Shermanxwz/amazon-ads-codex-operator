@@ -1,27 +1,31 @@
 # Archive / production acceptance gates
 
-A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5.x preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime and recovery machinery rather than adding routine human approval.
+A source release may be **archive-sealed** while a specific Amazon account deployment remains **live-acceptance pending**. v0.5.x preserves broad AI autonomy inside the Owner envelope; acceptance proves execution, runtime, recovery, reproducibility and provenance machinery rather than adding routine human approval.
 
 ## A. Source/archive gate
 
 Required before automatic sealing:
 
-- all Python compiles and the complete test suite passes on supported Python CI;
+- all Python compiles and the complete test suite passes on the explicitly certified Python 3.11/3.12 matrix;
 - JSON configs/schemas, Codex plugin manifest and repo marketplace parse;
 - package/runtime/plugin release versions agree and matching release notes exist;
+- PEP 517/build/test tooling and pytest transitive dependencies are exactly version-pinned;
+- GitHub Actions dependencies are pinned by exact commit SHA to certified Node-24-era releases;
 - Owner Web assets are packaged in the wheel;
-- repository tree contains no runtime Owner/auth files or known credential/token patterns;
+- current repository tree **and complete Git history** contain no forbidden runtime Owner/auth/key/database filenames or known credential/token patterns;
 - project MCP base config keeps writes gated until sealed Executor release;
 - one-use grants, exact MCP tool/arguments, final Owner re-check, fresh pre-write state guard and crash reconciliation remain covered;
 - deployed production hook is behavior-tested directly;
+- the Owner-owned master-key file is the canonical production signing identity and the Hook receives only the domain-separated Executor-grant key;
 - backup/restore preserves SQLite/audit integrity **and** the content-addressed ACTIVE/PREVIOUS Codex runtime identities while clearing stale OAuth/grant/runtime side state;
 - Codex Evergreen contract, registry, candidate promotion/rollback and ACTIVE runner binding tests pass;
 - production runner records ACTIVE runtime identity/fingerprint evidence;
 - Amazon Postman reference remains pinned to an immutable certified upstream commit;
 - shell scripts and rendered systemd units validate;
-- repo-scoped Codex plugin/skills and single-main-branch/release workflows are present;
-- a fresh Ubuntu 24.04 `virtual-full-stack` job passes bootstrap → preflight → Observe → sealed live path → frozen hook → verification → ambiguous/restart recovery → Emergency Stop/process-lock drills inside an isolated Python virtual environment;
-- `archive_check.py` exits 0 on the exact main SHA.
+- repo-scoped Codex plugin/skills, main-only branch hygiene, release, drift and release-integrity workflows are present;
+- a fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` job passes bootstrap → preflight → Observe → sealed live path → frozen hook → verification → Evergreen promote/rollback → backup/restore → ambiguous/restart recovery → Emergency Stop/process-lock drills inside an isolated virtual environment;
+- the virtual job double-builds the wheel using commit-derived `SOURCE_DATE_EPOCH` and requires byte identity;
+- `archive_check.py` exits 0 on the exact full-history main checkout.
 
 `sealed-release` is allowed to create the version tag only after the whole `archive-gate` workflow succeeds for the exact current main SHA, including every Python matrix job and `virtual-full-stack`.
 
@@ -68,16 +72,21 @@ Not reproducible in credential-free CI, including the virtual Amazon harness:
 9. **Contract drift:** record authenticated live MCP tool/schema set used by the accepted host.
 10. Run several clean autonomous cycles and inspect the first complete attribution window before materially widening Owner monetary authority.
 
-## E. Release identity
+## E. Release identity / provenance
 
 A source release is sealed only when:
 
-- final `main` SHA passes the complete archive-gate, including full virtual-stack acceptance;
+- final `main` SHA passes the complete archive-gate, including full virtual-stack acceptance and history privacy checks;
 - package/runtime/plugin/changelog/release notes identify the same version;
-- immutable tag points exactly at that green main SHA;
-- GitHub Release artifacts and `RELEASE_IDENTITY.json` identify the same SHA;
+- the version tag points exactly at that green main SHA and the release workflow refuses to reuse that version for another SHA;
+- release wheel and source archive each pass a two-build byte-identity check before publication;
+- GitHub Release artifacts and `RELEASE_IDENTITY.json` identify the same SHA and reproducibility epoch;
 - SHA-256 manifest covers wheel, source archive and release identity;
-- certified Amazon contract commit and Codex compatibility contract are inside the tagged tree;
+- v0.5.2+ checksummed subjects receive GitHub Artifact Attestations / Sigstore provenance;
+- scheduled release-integrity verification re-downloads assets, validates checksums, checks `RELEASE_IDENTITY.commit == tag SHA`, and verifies v0.5.2+ attestations;
+- certified Amazon contract commit, Codex compatibility contract and archive-tooling hash are inside the tagged/release identity chain;
 - repository branch list contains only `main`.
+
+Repository-level branch protection/rulesets are an account setting outside the source tree. Their absence must not be described as cryptographic immutability; source controls provide exact identity, tamper evidence, provenance and continuous verification.
 
 Only after section D is complete should that **specific Ubuntu + Amazon account deployment** be described as production-accepted.

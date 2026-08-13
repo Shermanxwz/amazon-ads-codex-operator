@@ -36,3 +36,11 @@ def test_executor_grant_signature_is_domain_separated_from_action_key():
     derived_signature = hmac.new(executor_grant_signing_key(master), canonical_json(grant).encode(), hashlib.sha256).hexdigest()
     assert signature == derived_signature
     assert signature != master_signature
+
+
+def test_from_path_ignores_ambient_signing_key_override(tmp_path, monkeypatch):
+    canonical = b"f" * 64
+    key_path = tmp_path / "operator_signing_key"
+    key_path.write_bytes(canonical)
+    monkeypatch.setenv("ADS_OPERATOR_SIGNING_KEY", "environment-must-not-override-owner-file")
+    assert Sealer.from_path(key_path).key == canonical

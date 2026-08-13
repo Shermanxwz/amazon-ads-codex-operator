@@ -1,0 +1,70 @@
+name: sealed-release-integrity
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 2 * * *'
+
+permissions:
+  contents: read
+  attestations: read
+
+concurrency:
+  group: sealed-release-integrity
+  cancel-in-progress: true
+
+jobs:
+  verify-releases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Verify all sealed releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tags < <(gh release list --limit 100 --json tagName,isDraft,isPrerelease --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName')
+          [[ "${#tags[@]}" -gt 0 ]] || { echo "No sealed releases found" >&2; exit 2; }
+          for tag in "${tags[@]}"; do
+            echo "Verifying $tag"
+            work="$(mktemp -d)"
+            gh release download "$tag" -D "$work"
+            [[ -f "$work/SHA256SUMS" && -f "$work/RELEASE_IDENTITY.json" ]]
+            (cd "$work" && sha256sum -c SHA256SUMS)
+
+            tag_sha="$(git rev-list -n1 "$tag")"
+            identity_sha="$(python3 - "$work/RELEASE_IDENTITY.json" <<'PY'
+          import json, sys
+          print(json.load(open(sys.argv[1]))['commit'])
+          PY
+          )"
+            identity_tag="$(python3 - "$work/RELEASE_IDENTITY.json" <<'PY'
+          import json, sys
+          print(json.load(open(sys.argv[1]))['tag'])
+          PY
+          )"
+            [[ "$identity_sha" == "$tag_sha" ]] || { echo "$tag identity commit differs from tag SHA" >&2; exit 3; }
+            [[ "$identity_tag" == "$tag" ]] || { echo "$tag identity tag mismatch" >&2; exit 3; }
+
+            # v0.5.2+ requires GitHub/Sigstore provenance for every checksummed subject.
+            if python3 - "$tag" <<'PY'
+          import sys
+          parts=tuple(int(x) for x in sys.argv[1].removeprefix('v').split('.'))
+          raise SystemExit(0 if parts >= (0,5,2) else 1)
+          PY
+            then
+              while read -r digest subject; do
+                [[ -n "$subject" ]]
+                gh attestation verify "$work/$subject" --repo "$GITHUB_REPOSITORY"
+              done < "$work/SHA256SUMS"
+            else
+              echo "$tag predates mandatory GitHub artifact attestations; checksum + identity verified."
+            fi
+            rm -rf "$work"
+          done
