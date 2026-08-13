@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "default": {
+    "return_rate_pct": 0.0
+  },
+  "asins": {
+    "B0EXAMPLE": {
+      "contribution_margin_pct": 38.0,
+      "contribution_margin_per_order": null,
+      "unit_cogs": 12.5,
+      "amazon_fees": 6.2,
+      "promo_cost_per_order": 0.0,
+      "return_rate_pct": 4.0,
+      "inventory_units": 800,
+      "observed_at": "2026-08-13T00:00:00Z",
+      "evidence_ref": "owner-economics:B0EXAMPLE"
+    }
+  }
+}

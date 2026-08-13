@@ -62,7 +62,9 @@ def main():
     if role=="planner":
         if control().get("planner_sleep"): time.sleep(float(control()["planner_sleep"]))
         before=float(amazon()["bid"]); after=round(before+0.10,2)
-        output({"context":{"today_spend":1.0,"today_spend_observed_at":now,"today_spend_evidence_ref":"virtual:spend","active_campaign_budget_total":10.0,"observed_asins":["B000VIRTUAL"]},"summary":"virtual acceptance bid update","actions":[{"action_id":"virtual-bid","action_type":"update_bid","tool_name":"updateKeywords","ad_product":"SPONSORED_PRODUCTS","entity_type":"keyword","entity_id":"k1","arguments":{"field":"bid","bid":after},"before":{"bid":before},"after":{"bid":after},"spend_delta":0.0,"confidence":0.95,"evidence_refs":["virtual:keyword:k1"],"dependencies":[],"reversible":True,"rollback":{"bid":before},"prewrite_observed_at":now,"rationale":"sealed full-stack acceptance"}]}); return 0
+        output({"context":{"today_spend":1.0,"today_spend_observed_at":now,"today_spend_evidence_ref":"virtual:spend","active_campaign_budget_total":10.0,"observed_asins":["B000VIRTUAL"]},"summary":"virtual acceptance bid update","learning_snapshot":{"observed_at":now,"entities":[],"economics":[],"portfolio_candidates":[],"experiments":[]},"actions":[{"action_id":"virtual-bid","action_type":"update_bid","tool_name":"updateKeywords","ad_product":"SPONSORED_PRODUCTS","entity_type":"keyword","entity_id":"k1","arguments":{"field":"bid","bid":after},"before":{"bid":before},"after":{"bid":after},"spend_delta":0.0,"confidence":0.95,"evidence_refs":["virtual:keyword:k1"],"dependencies":[],"reversible":True,"rollback":{"bid":before},"prewrite_observed_at":now,"rationale":"sealed full-stack acceptance"}]}); return 0
+    if role=="optimization_observer":
+        output({"summary":"virtual read-only optimization observation","learning_snapshot":{"observed_at":now,"entities":[],"economics":[],"portfolio_candidates":[],"experiments":[]}}); return 0
     if role in {"state_verifier","verifier"}:
         if role=="state_verifier": expected=data.get("expected_state") or {}; action_hash=data["action_hash"]
         else:

@@ -13,7 +13,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from ads_autopilot.controller import Controller
+from ads_autopilot.optimization_controller import OptimizationController
 from ads_autopilot.paths import RuntimePaths
 
 
@@ -42,7 +42,7 @@ def main() -> int:
     a = p.parse_args()
     try:
         with single_instance():
-            result = Controller(ROOT).run(a.kind, a.dry_run)
+            result = OptimizationController(ROOT).run(a.kind, a.dry_run)
     except Exception as exc:
         result = {"status": "exception", "error_type": type(exc).__name__, "error": str(exc)}
     print(json.dumps(result, indent=2))

@@ -1,4 +1,4 @@
-.PHONY: test archive-check virtual-acceptance codex-compat codex-runtime-status codex-adopt codex-rollback preflight bootstrap web dry-run hourly daily weekly emergency-stop status backup
+.PHONY: test archive-check virtual-acceptance codex-compat codex-runtime-status codex-adopt codex-rollback preflight bootstrap web dry-run hourly daily weekly emergency-stop status optimization-report backup
 
 bootstrap:
 	python3 scripts/bootstrap.py
@@ -48,6 +48,9 @@ emergency-stop:
 
 status:
 	python3 scripts/ownerctl.py status
+
+optimization-report:
+	python3 scripts/optimization_report.py
 
 backup:
 	python3 scripts/backup_owner.py

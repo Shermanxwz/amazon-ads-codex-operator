@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 — Sponsored Products optimization-intelligence seal
+
+- Added a dedicated read-only Sponsored Products research pass before each autonomous cycle so fresh normalized performance evidence is persisted before strategy selection.
+- Added `OptimizationMemory` with durable performance facts, ASIN economics, portfolio alternatives, experiments and verified action outcomes in the runtime database.
+- Added empirical-Bayesian CVR shrinkage, evidence confidence, attribution-tail risk, short-vs-long trend detection, intraday pattern summaries, impression-share headroom and marginal profit-per-click/ad-dollar signals.
+- Upgraded the Planner from campaign-level ACOS tuning to account/ASIN portfolio allocation based on expected incremental contribution profit, opportunity cost and exploration value.
+- Added first-class reasoning for search-term harvesting/isolation, target lifecycle, placement economics, Amazon Business/off-Amazon evidence, SIS, audience boosts, Amazon Marketing Stream, rule-based bidding/budget rules and Sponsored Products video when exposed by the authenticated Amazon surface.
+- Added an optional Owner economics feed at `$ADS_OWNER_HOME/economics.json` (or `ADS_ECONOMICS_FILE`) with `break_even_acos_pct` as a useful fallback margin proxy.
+- Made `learning_snapshot` a required Planner output even on zero-mutation cycles, preserving observations, foregone portfolio candidates and explicit causal experiments for future cycles.
+- Added `OptimizationController` without adding an approval tier or reducing the AI's Owner-granted business authority; optimization telemetry degrades independently from the sealed write control plane.
+- Added optimization architecture/unit contracts and a CLI optimization report.
+
 ## 0.5.3 — Production-surface full-stack acceptance seal
 
 - Extended fresh Ubuntu 24.04 Python-3.12 full-stack certification from eight internal execution/recovery scenarios to ten end-to-end production scenarios.
