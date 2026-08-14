@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amazon-ads-codex-operator"
-version = "0.6.1"
+version = "0.7.0"
 description = "Owner-controlled Codex Evergreen autonomous Amazon Ads control plane"
 requires-python = ">=3.11,<3.13"
 dependencies = []
