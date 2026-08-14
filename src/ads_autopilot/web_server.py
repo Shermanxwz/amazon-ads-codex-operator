@@ -27,7 +27,7 @@ class Handler(BaseHTTPRequestHandler):
     def _respond(self,status:int,data:Any,headers:dict[str,str]|None=None)->None:
         body=json.dumps(data,ensure_ascii=False,separators=(',',':'),default=str).encode(); self.send_response(status); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Content-Length',str(len(body))); self._security_headers()
         for k,v in (headers or {}).items():self.send_header(k,v)
-        self.end_headers(); self.wfile.write(body)
+        self.end_headers();self.wfile.write(body)
     def _static(self,filename:str)->None:
         safe=filename.strip('/') or 'index.html'
         if safe not in STATIC_NAMES or '..' in safe:self._respond(404,{'error':'not_found'});return
@@ -110,7 +110,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/revisions/restore':self._respond(200,self.app.owner.restore_revision(str(data.get('kind') or ''),int(data.get('revision') or 0)))
             elif path=='/api/password':
                 if not verify_password(str(data.get('current_password') or ''),self.app.owner.get_password_hash()):self._respond(403,{'error':'current_password_invalid'});return
-                self.app.owner.update_password_hash(hash_password(str(data.get('new_password') or '')));self.app.sessions.revoke(self._cookie_sid());self._respond(200,{'ok':True,'reauthenticate':True},{'Set-Cookie':'codex_ads_owner_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'})
+                self.app.owner.update_password_hash(hash_password(str(data.get('new_password') or '')));self.app.sessions.revoke_all();self._respond(200,{'ok':True,'reauthenticate':True},{'Set-Cookie':'codex_ads_owner_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'})
             else:self._respond(404,{'error':'not_found'})
         except (ValueError,KeyError) as exc:self._respond(400,{'error':str(exc)})
         except Exception as exc:self.app.runtime.event('error','web.post_error',None,{'path':path,'error':str(exc)});self._respond(500,{'error':'internal_error'})
