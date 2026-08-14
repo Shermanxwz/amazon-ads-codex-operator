@@ -2,11 +2,16 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sqlite3
+from zoneinfo import ZoneInfo
+
+import pytest
 
 from ads_autopilot.codex_runner import _enforce_verification
 from ads_autopilot.ledger import BudgetLedger
 from ads_autopilot.models import Action
+from ads_autopilot.owner_store import OwnerStore
 from ads_autopilot.policy import PolicyEngine
+from ads_autopilot.security import hash_password
 from ads_autopilot.state import Store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,7 +90,6 @@ def test_model_zero_spend_delta_cannot_remove_plan_reservation(tmp_path: Path):
         cycle_id="c1",
     )
     assert decisions[0].allowed, decisions[0].reasons
-    # Bid expansion is conservatively bounded by current active-budget headroom.
     assert decisions[0].spend_reservation >= 90.0
 
 
@@ -128,14 +132,17 @@ def test_verifier_cannot_claim_verified_over_deterministic_mismatch():
     assert any("bid" in diff for diff in value["results"][0]["differences"])
 
 
-def test_ledger_uses_owner_timezone_and_expires_never_executed_hold(tmp_path: Path):
-    owner_db = tmp_path / "owner.db"
-    with sqlite3.connect(owner_db) as conn:
+def _minimal_owner_db(path: Path, timezone_name: str) -> None:
+    with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE owner_documents(kind TEXT PRIMARY KEY, body_json TEXT NOT NULL)")
         conn.execute(
             "INSERT INTO owner_documents(kind,body_json) VALUES('operator',?)",
-            (json.dumps({"timezone": "Asia/Singapore"}),),
+            (json.dumps({"timezone": timezone_name}),),
         )
+
+
+def test_ledger_uses_owner_timezone_and_expires_never_executed_hold(tmp_path: Path):
+    _minimal_owner_db(tmp_path / "owner.db", "Asia/Singapore")
     store = Store(tmp_path / "runtime.db")
     data = json.loads((ROOT / "config/autonomy-policy.json").read_text())
     data["money"]["owner_daily_spend_ceiling"] = 100.0
@@ -154,3 +161,43 @@ def test_ledger_uses_owner_timezone_and_expires_never_executed_hold(tmp_path: Pa
             "SELECT status FROM reservations WHERE action_hash='orphan'"
         ).fetchone()["status"]
     assert status == "expired"
+
+
+def test_dashboard_reservation_day_uses_owner_timezone(tmp_path: Path):
+    _minimal_owner_db(tmp_path / "owner.db", "America/Los_Angeles")
+    store = Store(tmp_path / "runtime.db")
+    expected = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+    assert store.reservation_summary()["day_key"] == expected
+
+
+def test_historical_campaign_creation_is_counted_by_semantics_not_only_label(tmp_path: Path):
+    store = Store(tmp_path / "runtime.db")
+    store.create_cycle("c", "daily")
+    store.add_action(
+        "c",
+        {
+            "action_hash": "h",
+            "action_id": "legacy",
+            "action_type": "create_structure",
+            "tool_name": "createCampaigns",
+            "entity_type": "campaign",
+            "entity_id": "new",
+            "arguments": {"budget": 25, "state": "PAUSED", "name": "CODEX-legacy"},
+            "after": {"budget": 25, "state": "PAUSED"},
+            "signature": "s",
+        },
+    )
+    count, budget = store.campaign_creates_today("UTC")
+    assert count == 1
+    assert budget == 25.0
+
+
+def test_owner_boolean_and_numeric_fields_are_strictly_typed(tmp_path: Path):
+    store = OwnerStore(tmp_path / "strict-owner.db", b"k" * 32)
+    owner_policy = json.loads((ROOT / "config/autonomy-policy.json").read_text())
+    operator = json.loads((ROOT / "config/operator.example.json").read_text())
+    store.bootstrap(owner_policy, operator, hash_password("correct horse battery staple"))
+    with pytest.raises(ValueError, match="hourly_pacing must be boolean"):
+        store.update_operator({"scheduling.hourly_pacing": "false"})
+    with pytest.raises(ValueError, match="max_actions_per_cycle must be an integer"):
+        store.update_policy({"scope.max_actions_per_cycle": True})
