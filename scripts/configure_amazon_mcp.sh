@@ -34,5 +34,5 @@ echo "Using CODEX_HOME=$CODEX_HOME"
 echo "Using ACTIVE Codex=$CODEX_BIN"
 "$CODEX_BIN" mcp list
 "$CODEX_BIN" mcp login amazon_ads
-"$ROOT/scripts/configure_codex_plugin.sh"
+bash "$ROOT/scripts/configure_codex_plugin.sh"
 echo "Amazon Ads MCP OAuth and native amazon-ads-operator plugin setup completed for the dedicated production Codex home."
