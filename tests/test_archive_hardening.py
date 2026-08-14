@@ -90,7 +90,46 @@ def test_model_zero_spend_delta_cannot_remove_plan_reservation(tmp_path: Path):
         cycle_id="c1",
     )
     assert decisions[0].allowed, decisions[0].reasons
-    assert decisions[0].spend_reservation >= 90.0
+    # Worst-case Sponsored Ads overdelivery is 2x average daily budgets:
+    # 2*100 active budget - 10 already observed = 190 remaining exposure.
+    assert decisions[0].spend_reservation >= 190.0
+
+
+def test_exact_budget_increase_reserves_twice_delta_for_high_traffic_day(tmp_path: Path):
+    store = Store(tmp_path / "runtime.db")
+    store.create_cycle("budget-cycle", "daily")
+    action = bid_action(
+        action_type="update_budget",
+        tool_name="updateCampaigns",
+        entity_type="campaign",
+        entity_id="C1",
+        arguments={"campaignId": "C1", "budget": 120.0},
+        before={"budget": 100.0},
+        after={"budget": 120.0},
+        spend_delta=0.0,
+    )
+    decisions = policy().evaluate_plan(
+        [action], context=context(), store=store, timezone_name="UTC", cycle_id="budget-cycle"
+    )
+    assert decisions[0].allowed, decisions[0].reasons
+    assert decisions[0].spend_reservation == 40.0
+
+
+def test_create_paused_campaign_does_not_require_state_change_authority():
+    engine = policy()
+    engine.data["autonomy"]["allow_state_changes"] = False
+    action = bid_action(
+        action_type="create_campaign",
+        tool_name="createCampaigns",
+        entity_type="campaign",
+        entity_id="new",
+        arguments={"name": "CODEX-new", "state": "PAUSED", "budget": 25.0},
+        before={},
+        after={"name": "CODEX-new", "state": "PAUSED", "budget": 25.0},
+        spend_delta=0.0,
+    )
+    decision = engine.evaluate_action(action, context=context())
+    assert decision.allowed, decision.reasons
 
 
 def test_hourly_bid_cap_is_actually_enforced(tmp_path: Path):
