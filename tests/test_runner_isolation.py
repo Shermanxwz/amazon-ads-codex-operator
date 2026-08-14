@@ -16,12 +16,14 @@ def test_codex_command_is_read_only_and_role_gated(tmp_path: Path, monkeypatch):
     cmd = build_command(paths=paths, workspace=executor, schema=project / "schema.json", output=paths.run_root / "out.json")
     assert cmd[0] == "codex"
     assert cmd[cmd.index("--sandbox") + 1] == "read-only"
-    assert cmd[cmd.index("--ask-for-approval") + 1] == "never"
+    assert "--ask-for-approval" not in cmd
+    assert 'approval_policy="never"' in cmd
     assert "--json" in cmd
     assert any('default_tools_approval_mode="approve"' in item for item in cmd)
     planner = paths.workspace_root / "planner-test"
     planner.mkdir()
     pcmd = build_command(paths=paths, workspace=planner, schema=project / "schema.json", output=paths.run_root / "p.json")
+    assert 'approval_policy="never"' in pcmd
     assert any('default_tools_approval_mode="writes"' in item for item in pcmd)
 
 
