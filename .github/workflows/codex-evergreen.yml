@@ -14,6 +14,8 @@ on:
       - 'scripts/install_codex_ubuntu.sh'
       - 'scripts/configure_amazon_mcp.sh'
       - 'scripts/configure_codex_plugin.sh'
+      - '.agents/plugins/marketplace.json'
+      - 'plugins/amazon-ads-operator/**'
   pull_request:
     paths:
       - '.github/workflows/codex-evergreen.yml'
@@ -24,6 +26,8 @@ on:
       - 'scripts/install_codex_ubuntu.sh'
       - 'scripts/configure_amazon_mcp.sh'
       - 'scripts/configure_codex_plugin.sh'
+      - '.agents/plugins/marketplace.json'
+      - 'plugins/amazon-ads-operator/**'
 
 permissions:
   contents: read
@@ -56,3 +60,12 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/check_codex_runtime.py --binary "$(command -v codex)" --json | tee codex-compatibility-report.json
+      - name: Verify repo-native plugin installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CODEX_HOME="$RUNNER_TEMP/codex-plugin-home"
+          mkdir -p "$CODEX_HOME"
+          codex plugin marketplace add "$GITHUB_WORKSPACE" --json
+          codex plugin add amazon-ads-operator@amazon-ads-codex-operator --json
+          codex plugin list --json | python3 -c 'import json,sys; v=json.load(sys.stdin); rows=v.get("installed",[]) if isinstance(v,dict) else v; assert isinstance(rows,list); assert any(isinstance(x,dict) and x.get("name")=="amazon-ads-operator" and x.get("enabled") is not False for x in rows), v'
