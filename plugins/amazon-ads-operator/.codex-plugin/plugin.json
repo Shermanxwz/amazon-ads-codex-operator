@@ -1,6 +1,6 @@
 {
   "name": "amazon-ads-operator",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Owner-controlled Amazon Ads autonomous operations, optimization intelligence and direct-override diagnostics for Codex.",
   "repository": "https://github.com/Shermanxwz/amazon-ads-codex-operator",
   "keywords": ["amazon-ads", "sponsored-products", "codex", "autonomy", "optimization", "owner-direct-override"],
