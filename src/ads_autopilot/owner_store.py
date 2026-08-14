@@ -30,6 +30,15 @@ POLICY_EDITABLE_PATHS={
 OPERATOR_EDITABLE_PATHS={'advertiser_account_id','profile_ids','marketplaces','timezone','currency','objectives.primary','objectives.target_acos_pct','objectives.target_roas','objectives.break_even_acos_pct','objectives.minimum_orders_for_scaling','objectives.economics_available','scope.ad_products','scope.managed_asins','scope.exclude_campaign_name_regex','scheduling.hourly_pacing','scheduling.daily_optimization','scheduling.weekly_strategy','scheduling.daily_hour_local','scheduling.weekly_day','scheduling.weekly_hour_local'}
 PERMANENT_BLOCKS=['billing','payment','account_admin','credentials','user_management','permanent_delete']
 ALLOWED_AD_PRODUCTS={'SPONSORED_PRODUCTS'}
+POLICY_BOOLEAN_PATHS=(
+'autonomy.allow_campaign_creation','autonomy.allow_ad_group_creation','autonomy.allow_ad_creation','autonomy.allow_keyword_creation','autonomy.allow_target_creation','autonomy.allow_negative_targeting','autonomy.allow_state_changes','autonomy.allow_budget_decreases','autonomy.allow_budget_increases','autonomy.allow_bid_changes','autonomy.allow_placement_changes','scope.require_observed_asin_for_product_ad_create','scope.require_paused_campaign_create','scope.require_independent_verification','scope.require_prewrite_read','scope.require_verified_activation','recovery.pause_on_unknown_write_outcome')
+OPERATOR_BOOLEAN_PATHS=('objectives.economics_available','scheduling.hourly_pacing','scheduling.daily_optimization','scheduling.weekly_strategy')
+
+def _require_boolean_paths(value:dict[str,Any],paths:tuple[str,...])->None:
+    for path in paths:
+        try: item=_deep_get(value,path)
+        except KeyError: raise ValueError(f'{path} must be present and boolean')
+        if type(item) is not bool: raise ValueError(f'{path} must be boolean')
 
 class OwnerStore:
     def __init__(self,path:str|Path,audit_key:bytes):
@@ -158,6 +167,7 @@ class OwnerStore:
     @staticmethod
     def _sanitize_policy(policy:dict[str,Any])->dict[str,Any]:
         p=deepcopy(policy); p['permanent_blocks']=list(PERMANENT_BLOCKS); p.setdefault('autonomy',{})['human_approval_required']=False; p['autonomy']['allow_irreversible_cleanup']=False
+        _require_boolean_paths(p,POLICY_BOOLEAN_PATHS)
         products=p.setdefault('scope',{}).get('allowed_ad_products') or []
         if not isinstance(products,list) or not products: raise ValueError('at least one allowed_ad_product is required')
         normalized=[str(x).upper() for x in products]; unknown=set(normalized)-ALLOWED_AD_PRODUCTS
@@ -175,7 +185,7 @@ class OwnerStore:
         return p
     @staticmethod
     def _sanitize_operator(operator:dict[str,Any])->dict[str,Any]:
-        o=deepcopy(operator)
+        o=deepcopy(operator); _require_boolean_paths(o,OPERATOR_BOOLEAN_PATHS)
         if not isinstance(o.get('profile_ids'),list): raise ValueError('profile_ids must be a list')
         if not isinstance(o.get('marketplaces'),list) or not o.get('marketplaces'): raise ValueError('at least one marketplace is required')
         o['profile_ids']=[str(x).strip() for x in o['profile_ids'] if str(x).strip()]
@@ -202,12 +212,16 @@ class OwnerStore:
         o['currency']=currency; return o
 
 def _number_range(mapping:dict[str,Any],key:str,low:float,high:float)->None:
-    try:value=float(mapping.get(key))
+    raw=mapping.get(key)
+    if isinstance(raw,bool): raise ValueError(f'{key} must be numeric, not boolean')
+    try:value=float(raw)
     except (TypeError,ValueError):raise ValueError(f'{key} must be numeric')
     if not low<=value<=high:raise ValueError(f'{key} must be between {low} and {high}')
 def _int_range(mapping:dict[str,Any],key:str,low:int,high:int)->None:
     try:
-        raw=mapping.get(key); value=int(raw)
+        raw=mapping.get(key)
+        if isinstance(raw,bool): raise ValueError
+        value=int(raw)
         if isinstance(raw,float) and raw!=value:raise ValueError
     except (TypeError,ValueError):raise ValueError(f'{key} must be an integer')
     if not low<=value<=high:raise ValueError(f'{key} must be between {low} and {high}')
