@@ -4,12 +4,32 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '23 4 * * *'
+  push:
+    paths:
+      - '.github/workflows/codex-evergreen.yml'
+      - 'config/codex-compatibility.json'
+      - 'src/ads_autopilot/codex_runner.py'
+      - 'src/ads_autopilot/codex_compat/**'
+      - 'scripts/check_codex_runtime.py'
+      - 'scripts/install_codex_ubuntu.sh'
+      - 'scripts/configure_amazon_mcp.sh'
+      - 'scripts/configure_codex_plugin.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/codex-evergreen.yml'
+      - 'config/codex-compatibility.json'
+      - 'src/ads_autopilot/codex_runner.py'
+      - 'src/ads_autopilot/codex_compat/**'
+      - 'scripts/check_codex_runtime.py'
+      - 'scripts/install_codex_ubuntu.sh'
+      - 'scripts/configure_amazon_mcp.sh'
+      - 'scripts/configure_codex_plugin.sh'
 
 permissions:
   contents: read
 
 concurrency:
-  group: codex-evergreen-compatibility
+  group: codex-evergreen-compatibility-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
