@@ -1,11 +1,11 @@
 {
   "version": 2,
   "strategy": "capability-gated-evergreen",
-  "certified_at": "2026-08-13",
+  "certified_at": "2026-08-14",
   "production_runtime": "owner-pinned-active-slot",
   "update_policy": "candidate-probe-promote-rollback",
   "required_commands": [
-    {"name":"exec","argv":["exec","--help"],"maturity":"stable","required_tokens":["--strict-config","--sandbox","--ask-for-approval","--dangerously-bypass-hook-trust","--ephemeral","--json","--output-schema","--output-last-message","--config","--model"]},
+    {"name":"exec","argv":["exec","--help"],"maturity":"stable","required_tokens":["--strict-config","--sandbox","--dangerously-bypass-hook-trust","--ephemeral","--json","--output-schema","--output-last-message","--config","--model"]},
     {"name":"mcp","argv":["mcp","--help"],"maturity":"stable","required_tokens":["list","login"]},
     {"name":"plugin","argv":["plugin","--help"],"maturity":"stable","required_tokens":["list","marketplace"]},
     {"name":"plugin-marketplace","argv":["plugin","marketplace","--help"],"maturity":"stable","required_tokens":["add","list","upgrade","remove"]},
@@ -18,5 +18,5 @@
   "required_config_fragments": ["hooks = true", "[mcp_servers.amazon_ads]", "default_tools_approval_mode = \"writes\""],
   "strict_config_smoke": true,
   "non_dependencies": ["app-server", "remote-control", "cloud"],
-  "notes": "Production selects an Owner-pinned Codex runtime by capability, not by PATH or a cosmetic version string. New Codex versions are candidates until the stable command/flag and strict-config contract passes; promotion is atomic and rollback retains the previous certified runtime."
+  "notes": "Production selects an Owner-pinned Codex runtime by capability. exec compatibility follows the exec help surface, while non-interactive approval is exercised through the supported approval_policy config override instead of assuming a global flag is repeated in exec --help."
 }
