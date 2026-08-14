@@ -30,6 +30,19 @@ class OptimizationController(Controller):
             economics_path=economics_path or (self.paths.owner_home / "economics.json"),
         )
 
+    def _recover_incomplete_actions(self, snapshot: dict[str, Any]) -> None:
+        # A post-write mismatch/unknown that survived the configured verifier
+        # grace window is still never replayed. On the next process/cycle,
+        # however, route it back through the Controller's read-only Amazon
+        # reconciliation so eventual consistency can turn stale uncertainty into
+        # durable evidence. Owner PAUSED state is intentionally not auto-cleared.
+        with self.store.connection() as conn:
+            conn.execute(
+                "UPDATE actions SET status='unknown' "
+                "WHERE status IN ('verification_failed','recovery_uncertain')"
+            )
+        super()._recover_incomplete_actions(snapshot)
+
     def _recent_state(self) -> dict[str, Any]:
         state = super()._recent_state()
         try:
