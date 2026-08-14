@@ -18,6 +18,7 @@ def load(name, default=None):
 def save(name, value): (home()/name).write_text(json.dumps(value, sort_keys=True))
 def amazon(): return load("virtual-amazon-state.json", {"bid":1.0})
 def observed(): return {"keywordId":"k1", "bid":amazon()["bid"]}
+def critical_context(): return {"today_spend":1.0,"active_campaign_budget_total":10.0,"observed_asins":["B000VIRTUAL"]}
 def control(): return load("virtual-control.json", {"mode":"normal"})
 def payload():
     text=sys.stdin.read(); marker="INPUT_JSON:\n"
@@ -27,11 +28,13 @@ def output(value):
     p=Path(arg("--output-last-message")); p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(value, sort_keys=True)); print(json.dumps({"type":"virtual-codex","version":VERSION}))
 def differences(expected):
-    got=observed(); diffs=[]
+    got=critical_context() if any(k in expected for k in ("today_spend","active_campaign_budget_total","observed_asins")) else observed(); diffs=[]
     for k,v in expected.items():
         if k not in got: diffs.append(f"{k} missing")
         elif isinstance(v,(int,float)) and isinstance(got[k],(int,float)):
             if abs(float(got[k])-float(v))>=1e-9: diffs.append(f"{k}: expected={v} observed={got[k]}")
+        elif isinstance(v,list) and isinstance(got[k],list):
+            if sorted(json.dumps(x,sort_keys=True) for x in v)!=sorted(json.dumps(x,sort_keys=True) for x in got[k]): diffs.append(f"{k}: list changed")
         elif str(got[k]) != str(v): diffs.append(f"{k}: expected={v} observed={got[k]}")
     return got,diffs
 
