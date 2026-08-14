@@ -2,7 +2,7 @@
 
 A Codex-native **Owner-controlled autonomous Amazon Ads control plane** for Ubuntu, designed for unattended Sponsored Products optimization while keeping AI reasoning freedom strictly inside Owner-defined authority and money boundaries.
 
-> Release line: **v0.5.x — Codex Evergreen / archive-sealed native operator.** v0.5.3 closes the credential-free end-to-end surface by exercising the real Owner Web entrypoint and production systemd rendering path in addition to the sealed execution/recovery chain.
+> Release line: **v0.7.x — deterministic Owner-boundary / Codex Evergreen archive seal.** v0.7.0 makes mutation identity, monetary exposure and final verification deterministic Controller facts rather than trusting Planner/Verifier declarations, and closes Linux scheduling, linger, plugin-install and current-Codex compatibility gaps.
 
 ## Core rule
 
@@ -22,7 +22,10 @@ Owner Web / ownerctl
 Planner Codex ──read only──► Amazon Ads MCP
         │
         ▼
-Deterministic Policy + spend reservation
+Deterministic semantic Policy
+  ├── exact MCP tool / arguments / entity binding
+  ├── sealed before / after state requirements
+  └── Controller-derived spend reservation
         │
         ▼
 fresh pre-write state guard
@@ -42,11 +45,16 @@ Amazon mutation
         ▼
 Independent Verifier Codex ──► fresh Amazon state
         │
+        ▼
+Controller deterministic sealed-after ⊆ fresh-observed comparison
+        │
         ├── verified → complete
-        └── ambiguous/crash → reconcile, never blind replay
+        └── ambiguous/mismatch/crash → grace/reconcile, never blind replay
 ```
 
 The Owner/action master signing key is file-canonical under Owner Home and is never given to the frozen Hook. Executor v2 grants use a deterministic domain-separated key stored separately; Hook grant verification therefore cannot forge Owner audit history or normal sealed-action signatures.
+
+Planner fields such as `action_type`, `before`, `after`, `entity_id` and `spend_delta` are proposals, not authority. The deterministic policy cross-checks the real MCP tool/arguments and sealed state; spend-increasing plans reserve a Controller-derived conservative exposure even when the model reports `spend_delta=0`.
 
 ## Codex Evergreen
 
@@ -69,13 +77,17 @@ python3 scripts/codex_runtime.py promote <runtime_id>
 python3 scripts/codex_runtime.py rollback
 ```
 
+Noninteractive production runs use the current Codex config contract `approval_policy="never"`; the Evergreen probe exercises that parser/config shape directly instead of assuming a global flag must be duplicated in `codex exec --help`.
+
 ## Native Codex plugin
 
 The repo includes `.agents/plugins/marketplace.json` and `plugins/amazon-ads-operator` with status, diagnosis, acceptance and autonomy skills. The plugin is the native Codex operator UX, not a parallel privileged mutation path: Amazon writes still go only through the sealed Controller/Executor chain.
 
+`configure_amazon_mcp.sh` now registers the local marketplace, installs `amazon-ads-operator` into the dedicated production `CODEX_HOME`, and verifies that the plugin is installed/enabled after OAuth binding.
+
 ## Owner control
 
-The authenticated Owner Web controls `Autopilot / Observe / Paused`, Emergency Stop, advertiser/profile/ASIN scope, daily spend ceiling, campaign/new-campaign budgets, bid/budget/placement expansion, cooldowns, creation counts and autonomy families. Policy/operator revisions are immutable and audited; revision restore returns to Observe.
+The authenticated Owner Web controls `Autopilot / Observe / Paused`, Emergency Stop, advertiser/profile/ASIN scope, daily spend ceiling, campaign/new-campaign budgets, bid/budget/placement expansion, cooldowns, creation counts, schedule switches and autonomy families. Policy/operator revisions are immutable and audited; revision restore returns to Observe. Owner boolean and numeric fields are strictly typed so strings/booleans cannot silently change policy meaning.
 
 Web binds to `127.0.0.1:8765` by default. Prefer SSH tunneling or an explicitly secured TLS reverse proxy.
 
@@ -119,17 +131,19 @@ make virtual-acceptance
 python3 scripts/run_cycle.py daily --dry-run
 ```
 
-Only after staged live acceptance should the host enter Autopilot and enable timers with `./scripts/install_systemd.sh`.
+Only after staged live acceptance should the host enter Autopilot and enable timers with `./scripts/install_systemd.sh`. Production systemd installation requires user linger so Owner Web/timers survive logout and start after boot. The installer enables/disables hourly/daily/weekly timers from Owner scheduling switches; the runtime entrypoint independently honors the same switches. Re-run `install_systemd.sh` after changing a schedule switch from disabled to enabled so the corresponding disabled timer is activated.
+
+Overlapping production timer instances serialize on one Linux `flock` instead of silently dropping a daily/weekly cycle. Manual invocations keep a bounded overlap wait for operator feedback.
 
 ## Ten-scenario full virtual-stack acceptance
 
 The fresh Ubuntu 24.04 Python-3.12 `virtual-full-stack` gate creates an isolated venv, installs the fully pinned archive toolchain, double-builds the wheel with commit-derived `SOURCE_DATE_EPOCH` and requires byte identity, installs that wheel, then runs two cooperating harnesses.
 
-The control-plane harness proves eight scenarios: fresh bootstrap/preflight; Observe no-write; complete sealed mutation and independent verification; Codex candidate promotion/rollback; backup/restore; after-write transport ambiguity reconciled without replay; consumed-grant/pre-write crash and restart uncertainty with no replay; and final-boundary Emergency Stop plus Linux `flock` overlap rejection.
+The control-plane harness proves eight scenarios: fresh bootstrap/preflight; Observe no-write; complete sealed mutation and independent deterministic verification; Codex candidate promotion/rollback; backup/restore; after-write transport ambiguity reconciled without replay; consumed-grant/pre-write crash and restart uncertainty with no replay; and final-boundary Emergency Stop plus Linux `flock` overlap exclusion.
 
 The production-surface harness adds two more scenarios. It launches the real `scripts/run_web.py` on loopback and exercises static UI/security headers/readiness, unauthenticated denial, password login, CSRF rejection/enforcement, policy revision, revision restore, Autopilot and Emergency Stop. It also runs the real `scripts/install_systemd.sh` rendering path inside an isolated HOME and verifies all rendered units with no unresolved placeholders plus `systemd-analyze verify` when available.
 
-`ADS_SYSTEMD_RENDER_ONLY=1` is a certification-only switch that exits **after** exact production template rendering and **before** any `systemctl` call; normal production installation behavior is unchanged.
+`ADS_SYSTEMD_RENDER_ONLY=1` is a certification-only switch that exits **after** exact production template rendering and **before** any `systemctl`/linger mutation; normal production installation behavior is unchanged.
 
 This virtual stack substitutes only the external Amazon/Codex network boundary and actual host service activation. The Controller, Owner/runtime databases, policy/ledger, runtime registry, frozen Hook, grants, verifier, recovery logic, Owner Web server and systemd rendering logic are the production implementations.
 
@@ -144,9 +158,11 @@ Backup manifest v2 preserves consistent Owner/runtime SQLite snapshots, both sig
 
 Restore clears stale OAuth/auth, grants, workspaces/runs, prior runtime slots/registry, locks and SQLite sidecars before reconstruction; it verifies checksums, runtime fingerprints, SQLite integrity and the Owner audit chain. A restored host returns to Observe and must re-bind Amazon MCP, pass preflight and dry-run before Autopilot.
 
+Post-write verification uses the configured grace/retry window. Persisted `verification_failed`/`recovery_uncertain` outcomes are re-read on a later startup/cycle without replay; fresh Amazon state may repair the evidence to verified, but the Controller never auto-clears an Owner/system Pause.
+
 ## Repository / release seal
 
-The repo intentionally retains one branch: `main`. Every main push runs the Python 3.11/3.12 archive matrix, complete-history privacy scan and Python-3.12 ten-scenario virtual full stack. GitHub Actions and archive/build tooling are exact-version/SHA pinned.
+The release target retains only `main`. Every main push runs the Python 3.11/3.12 archive matrix, complete-history privacy scan and Python-3.12 ten-scenario virtual full stack. GitHub Actions and archive/build tooling are exact-version/SHA pinned.
 
 A successful exact main SHA is processed by `sealed-release`. Wheel and source archive are each built twice and must be byte-identical. `RELEASE_IDENTITY.json` binds the commit, certified Amazon contract, Codex compatibility contract, archive-tooling hash and reproducibility epoch; `SHA256SUMS` covers published subjects. v0.5.2+ release subjects receive GitHub Artifact Attestations backed by Sigstore, and `sealed-release-integrity` periodically re-downloads releases to verify checksums, tag/identity binding and attestations.
 
