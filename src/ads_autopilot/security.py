@@ -82,6 +82,10 @@ class SessionStore:
         with self._lock:
             self._sessions.pop(sid, None)
 
+    def revoke_all(self) -> None:
+        with self._lock:
+            self._sessions.clear()
+
 
 class LoginRateLimiter:
     def __init__(self, max_failures: int = 8, window_seconds: int = 300, block_seconds: int = 900):
