@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 — Deterministic Owner-boundary hardening
+
+- Made existing-entity `before` state, intended `after` state, entity identity and exact mutation semantics deterministic policy requirements rather than optional Planner assertions.
+- Added semantic inspection of MCP arguments so generic action labels cannot hide bid, budget, placement, state or ad-product changes.
+- Replaced model-trusted spend reservations with conservative plan-level exposure derived from live budget evidence and exact budget deltas; `spend_delta=0` can no longer remove Owner monetary protection.
+- Enforced the hourly bid cap and Sponsored Products argument scope.
+- Bound post-write VERIFIED status to a deterministic sealed-after vs fresh-observed comparison and activated the configured verification grace/retry window.
+- Made budget reservation day boundaries follow the Owner account timezone and reclaim expired never-executed orphan reservations while retaining ambiguous writes conservatively.
+- Serialized overlapping cycles instead of dropping a scheduled run on lock collision; scheduling booleans now gate both runtime entry and installed timers.
+- Required systemd user linger for unattended boot/logout reliability.
+- Aligned Codex Evergreen with the current `approval_policy="never"` config surface instead of incorrectly expecting a global approval flag inside `codex exec --help`.
+- Added native local-marketplace plugin installation and verification to production Codex/Amazon MCP setup.
+- Added regression tests for every newly sealed invariant.
+
 ## 0.6.1 — Owner Direct Override seal
 
 - Added authenticated Owner Direct Override windows for 30 minutes, 1 hour, 2 hours and permanent-until-cleared authorization.
