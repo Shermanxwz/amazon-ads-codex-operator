@@ -4,5 +4,5 @@
   "path": "postman",
   "commit": "4db5acaa1a7798e9c080c2a1f1b5b2e6c1f52448",
   "certified_at": "2026-08-13",
-  "purpose": "Reproducible Amazon Ads API/Postman contract reference for the v0.4 archive line. Runtime MCP remains primary. Upstream drift is reviewed separately and never silently replaces this certified snapshot."
+  "purpose": "Reproducible Amazon Ads API/Postman contract reference for the sealed operator release lineage. Runtime MCP remains primary. Upstream drift is reviewed separately and never silently replaces this certified snapshot."
 }
