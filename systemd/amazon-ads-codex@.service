@@ -8,9 +8,9 @@ Type=oneshot
 WorkingDirectory=@ROOT@
 Environment=PYTHONUNBUFFERED=1
 Environment=ADS_OWNER_HOME=@OWNER_HOME@
-Environment=ADS_CYCLE_LOCK_WAIT_SECONDS=7200
+Environment=ADS_CYCLE_LOCK_WAIT_SECONDS=0
 ExecStart=/usr/bin/python3 @ROOT@/scripts/run_cycle.py %i
-TimeoutStartSec=3h
+TimeoutStartSec=infinity
 Nice=5
 NoNewPrivileges=true
 PrivateTmp=true
