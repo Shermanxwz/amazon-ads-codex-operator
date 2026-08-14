@@ -30,7 +30,10 @@ def single_instance():
     handle = paths.lock_file.open("a+")
     if fcntl is None:
         raise RuntimeError("Linux fcntl is required for the production single-instance lock")
-    wait_seconds = max(1.0, float(os.environ.get("ADS_CYCLE_LOCK_WAIT_SECONDS", "7200")))
+    # Direct/manual invocations have a short bounded wait. Production systemd
+    # explicitly sets 7200 seconds so timer collisions serialize instead of
+    # silently losing a daily/weekly run.
+    wait_seconds = max(1.0, float(os.environ.get("ADS_CYCLE_LOCK_WAIT_SECONDS", "5")))
     deadline = time.monotonic() + wait_seconds
     try:
         while True:
@@ -40,7 +43,8 @@ def single_instance():
             except BlockingIOError:
                 if time.monotonic() >= deadline:
                     raise RuntimeError(
-                        f"timed out after {wait_seconds:g}s waiting for the active Amazon Ads Codex cycle"
+                        "another Amazon Ads Codex cycle is already running; "
+                        f"timed out after {wait_seconds:g}s waiting for the serialized execution slot"
                     )
                 time.sleep(min(1.0, max(0.05, deadline - time.monotonic())))
         yield
