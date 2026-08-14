@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 UTC=timezone.utc
 
 def now_iso()->str: return datetime.now(UTC).isoformat()
+def _norm(value:Any)->str: return ''.join(ch for ch in str(value).lower() if ch.isalnum())
 
 def _day_bounds(timezone_name:str)->tuple[str,str]:
     tz=ZoneInfo(timezone_name)
@@ -16,6 +17,11 @@ def _day_bounds(timezone_name:str)->tuple[str,str]:
     start_local=local_now.replace(hour=0,minute=0,second=0,microsecond=0)
     end_local=start_local+timedelta(days=1)
     return start_local.astimezone(UTC).isoformat(), end_local.astimezone(UTC).isoformat()
+
+def _is_campaign_create_payload(payload:dict[str,Any])->bool:
+    if _norm(payload.get('entity_type'))!='campaign': return False
+    action=_norm(payload.get('action_type')); tool=_norm(payload.get('tool_name'))
+    return action.startswith('createcampaign') or ('campaign' in tool and any(token in tool for token in ('create','add')))
 
 class Store:
     def __init__(self, path: str|Path):
@@ -47,6 +53,15 @@ class Store:
             CREATE INDEX IF NOT EXISTS idx_managed_entities_source ON managed_entities(source_action_hash);
             CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT NOT NULL, event_type TEXT NOT NULL, cycle_id TEXT, data_json TEXT NOT NULL, created_at TEXT NOT NULL);
             """)
+    def _owner_timezone(self)->str:
+        owner_db=self.path.with_name('owner.db')
+        if not owner_db.exists(): return 'UTC'
+        try:
+            with sqlite3.connect(owner_db,timeout=2) as conn:
+                row=conn.execute("SELECT body_json FROM owner_documents WHERE kind='operator'").fetchone()
+            value=json.loads(row[0] or '{}') if row else {}
+            timezone_name=str(value.get('timezone') or 'UTC'); ZoneInfo(timezone_name); return timezone_name
+        except Exception: return 'UTC'
     def create_cycle(self, cycle_id:str, kind:str):
         with self.connection() as c: c.execute("INSERT INTO cycles(id,kind,status,started_at) VALUES(?,?,?,?)",(cycle_id,kind,"planning",now_iso()))
     def finish_cycle(self, cycle_id:str,status:str,summary:dict[str,Any]):
@@ -90,12 +105,13 @@ class Store:
     def campaign_creates_today(self,timezone_name:str)->tuple[int,float]:
         start,end=_day_bounds(timezone_name)
         with self.connection() as c:
-            rows=c.execute("SELECT payload_json,status FROM actions WHERE created_at>=? AND created_at<? AND lower(action_type) LIKE 'create_campaign%'",(start,end)).fetchall()
+            rows=c.execute("SELECT payload_json,status FROM actions WHERE created_at>=? AND created_at<?",(start,end)).fetchall()
         count=0; budget=0.0
         for row in rows:
             if row['status'] in {'rejected','cancelled','dry_run'}: continue
             try: payload=json.loads(row['payload_json'] or '{}')
             except Exception: continue
+            if not _is_campaign_create_payload(payload): continue
             args=payload.get('arguments') or {}; after=payload.get('after') or {}
             value=args.get('budget',args.get('dailyBudget',after.get('budget',0)))
             try: amount=max(0.0,float(value or 0))
@@ -145,7 +161,7 @@ class Store:
             out.append(d)
         return out
     def reservation_summary(self,day_key:str|None=None)->dict[str,Any]:
-        day_key=day_key or datetime.now(UTC).date().isoformat()
+        day_key=day_key or datetime.now(ZoneInfo(self._owner_timezone())).date().isoformat()
         with self.connection() as c:
             rows=c.execute("SELECT status,COUNT(*) count,COALESCE(SUM(amount),0) amount FROM reservations WHERE day_key=? GROUP BY status",(day_key,)).fetchall()
         return {'day_key':day_key,'by_status':{str(r['status']):{'count':int(r['count']),'amount':float(r['amount'] or 0)} for r in rows}}
@@ -172,10 +188,10 @@ class Store:
 
 def _action_family(action_type:str,args:dict[str,Any])->str:
     action=str(action_type or '').lower(); field=str(args.get('field') or '').lower()
-    if 'budget' in action or field=='budget': return 'budget'
-    if 'bid' in action or field=='bid': return 'bid'
+    if 'budget' in action or field=='budget' or any(k in args for k in ('budget','dailyBudget','budgetAmount')): return 'budget'
+    if 'bid' in action or field=='bid' or any(k in args for k in ('bid','newBid','bidAmount')): return 'bid'
     if 'placement' in action or field in {'placement','placement_pct'}: return 'placement'
     if 'negative' in action: return 'negative'
     if action.startswith('create_'): return 'create'
-    if any(x in action for x in ('pause','enable','resume','state')): return 'state'
+    if any(x in action for x in ('pause','enable','resume','state')) or any(k in args for k in ('state','status')): return 'state'
     return action or 'other'
